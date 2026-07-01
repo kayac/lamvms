@@ -41,7 +41,7 @@ func (app *App) selectMicrovmID(ctx context.Context, stateFilter ...types.Microv
 		fmt.Fprintf(&buf, "%s\t%s\t%s\n",
 			aws.ToString(item.MicrovmId),
 			item.State,
-			item.StartedAt.Format("2006-01-02T15:04:05"),
+			createdAtOrZero(item.StartedAt).Format("2006-01-02T15:04:05"),
 		)
 	}
 

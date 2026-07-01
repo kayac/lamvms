@@ -22,7 +22,7 @@ type callerIdentity struct {
 	err     error
 }
 
-func newCallerIdentity(cfg aws.Config, ctx context.Context) *callerIdentity {
+func newCallerIdentity(ctx context.Context, cfg aws.Config) *callerIdentity {
 	return &callerIdentity{cfg: cfg, ctx: ctx}
 }
 

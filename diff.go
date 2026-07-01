@@ -122,6 +122,18 @@ func buildRemoteMap(name string, v *lambdamicrovms.GetMicrovmImageVersionOutput)
 	if len(v.Resources) > 0 {
 		m["Resources"] = v.Resources
 	}
+	if v.BaseImageVersion != nil {
+		m["BaseImageVersion"] = aws.ToString(v.BaseImageVersion)
+	}
+	if len(v.CpuConfigurations) > 0 {
+		m["CpuConfigurations"] = v.CpuConfigurations
+	}
+	if len(v.EgressNetworkConnectors) > 0 {
+		m["EgressNetworkConnectors"] = v.EgressNetworkConnectors
+	}
+	if len(v.Tags) > 0 {
+		m["Tags"] = v.Tags
+	}
 	return m
 }
 

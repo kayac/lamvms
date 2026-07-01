@@ -74,9 +74,6 @@ func TestDeleteOldVersions_FailedBeforeActiveNotDeleted(t *testing.T) {
 	mock := NewMockLambdaMicroVMsClient(ctrl)
 
 	now := time.Now()
-	// v1.0 ACTIVE, v2.0 FAILED, v3.0 FAILED, v4.0-v8.0 ACTIVE
-	// keep=5 → cutoff after v4.0 → v1.0 is after cutoff → deleted
-	// v2.0 FAILED, v3.0 FAILED are between v4.0 and v1.0 → also deleted
 	mock.EXPECT().
 		ListMicrovmImageVersions(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.ListMicrovmImageVersionsOutput{
@@ -92,7 +89,6 @@ func TestDeleteOldVersions_FailedBeforeActiveNotDeleted(t *testing.T) {
 			},
 		}, nil)
 
-	// v4.0 is the 5th ACTIVE SUCCESSFUL (cutoff), so v1.0, v2.0(FAILED), v3.0(FAILED) are deleted
 	mock.EXPECT().
 		DeleteMicrovmImageVersion(gomock.Any(), gomock.Eq(&lambdamicrovms.DeleteMicrovmImageVersionInput{
 			ImageIdentifier: aws.String(testImageARN),
@@ -126,9 +122,6 @@ func TestDeleteOldVersions_RecentFailedNotDeleted(t *testing.T) {
 	mock := NewMockLambdaMicroVMsClient(ctrl)
 
 	now := time.Now()
-	// v1.0-v5.0 ACTIVE SUCCESSFUL, v6.0 FAILED, v7.0 FAILED
-	// keep=5 → cutoff after v1.0 (5th ACTIVE SUCCESSFUL)
-	// v6.0 and v7.0 are FAILED but newer than cutoff → not deleted
 	mock.EXPECT().
 		ListMicrovmImageVersions(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.ListMicrovmImageVersionsOutput{
@@ -143,7 +136,6 @@ func TestDeleteOldVersions_RecentFailedNotDeleted(t *testing.T) {
 			},
 		}, nil)
 
-	// No deletions — 5 ACTIVE SUCCESSFUL exist, FAILED v6.0/v7.0 are newer than cutoff
 	app := &App{client: mock}
 	if err := app.deleteOldVersions(context.Background(), testImageARN, 5); err != nil {
 		t.Fatal(err)
@@ -156,9 +148,6 @@ func TestDeleteOldVersions_MixedStates(t *testing.T) {
 	mock := NewMockLambdaMicroVMsClient(ctrl)
 
 	now := time.Now()
-	// 11.0 FAILED, 10.0 FAILED, 9.0 SUCCESSFUL INACTIVE, 8.0-5.0 SUCCESSFUL ACTIVE, 4.0 FAILED
-	// keep=3 → count ACTIVE+SUCCESSFUL: 8.0(1), 7.0(2), 6.0(3=cutoff)
-	// delete: 5.0(ACTIVE+SUCCESSFUL), 9.0(INACTIVE), 4.0(FAILED)
 	mock.EXPECT().
 		ListMicrovmImageVersions(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.ListMicrovmImageVersionsOutput{

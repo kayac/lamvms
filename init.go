@@ -61,7 +61,7 @@ func runInit(ctx context.Context, client LambdaMicroVMsClient, opt *InitOption) 
 	data = append(data, '\n')
 
 	outputPath := opt.Output
-	if opt.Jsonnet {
+	if opt.Jsonnet && outputPath == "microvm.json" {
 		outputPath = "microvm.jsonnet"
 	}
 

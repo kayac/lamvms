@@ -66,6 +66,53 @@ func TestInit(t *testing.T) {
 	}
 }
 
+func TestInit_JsonnetRespectsCustomOutput(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	mock.EXPECT().
+		ListMicrovmImages(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.ListMicrovmImagesOutput{
+			Items: []types.MicrovmImageSummary{
+				{Name: aws.String("test-image"), ImageArn: aws.String(testImageARN), State: types.MicrovmImageStateCreated},
+			},
+		}, nil)
+	mock.EXPECT().
+		GetMicrovmImage(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageOutput{
+			Name:                     aws.String("test-image"),
+			ImageArn:                 aws.String(testImageARN),
+			State:                    types.MicrovmImageStateCreated,
+			LatestActiveImageVersion: aws.String("1.0"),
+		}, nil)
+	mock.EXPECT().
+		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
+			ImageArn:     aws.String(testImageARN),
+			ImageVersion: aws.String("1.0"),
+			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/BuildRole"),
+			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://bucket/app.zip"},
+			State:        types.MicrovmImageVersionStateSuccessful,
+			Status:       types.MicrovmImageVersionStatusActive,
+		}, nil)
+
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "custom.jsonnet")
+
+	code, err := runInit(context.Background(), mock, &InitOption{ImageName: "test-image", Output: outputPath, Jsonnet: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Fatalf("expected output at %s, got error: %v", outputPath, err)
+	}
+}
+
 func TestInit_ImageNotFound(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

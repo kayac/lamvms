@@ -32,7 +32,7 @@ type Loader struct {
 
 // NewLoader creates a Loader with Jsonnet native functions and template functions.
 func NewLoader(ctx context.Context, awsCfg aws.Config, extStr, extCode map[string]string) *Loader {
-	callerID := newCallerIdentity(awsCfg, ctx)
+	callerID := newCallerIdentity(ctx, awsCfg)
 
 	nativeFuncs := []*jsonnet.NativeFunction{
 		nativeFuncEnv(),
