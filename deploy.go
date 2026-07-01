@@ -265,5 +265,5 @@ func (app *App) getFailureReason(ctx context.Context, imageARN, imageVersion str
 	if len(reasons) > 0 {
 		return strings.Join(reasons, "; ")
 	}
-	return "(no reason found, check CloudWatch logs: /aws/lambda/microvms/)"
+	return "(no reason found, check CloudWatch logs: /aws/lambda-microvms/)"
 }

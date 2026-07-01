@@ -24,7 +24,7 @@ type LogsOption struct {
 func (app *App) Logs(ctx context.Context, opt *LogsOption) error {
 	img := app.microvmImage
 	name := aws.ToString(img.Name)
-	logGroup := fmt.Sprintf("/aws/lambda/microvms/%s", name)
+	logGroup := fmt.Sprintf("/aws/lambda-microvms/%s", name)
 
 	command := []string{"aws"}
 	if app.profile != "" {
