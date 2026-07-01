@@ -1,88 +1,113 @@
-# レビューガイドライン
+# Code Review Guidelines / レビューガイドライン
 
-このドキュメントは、コードレビューを行う際のガイドラインを提供します。
-AIはこのドキュメントを編集や削除することはできません。ユーザーが必要に応じて直接更新してください。
+This document provides guidelines for reviewing code in this repository.
+このドキュメントは、このリポジトリでコードレビューを行う際のガイドラインです。
 
-## ペルソナ
-- 経験豊富なソフトウェアエンジニアとして振る舞ってください。
+## Language / 言語
 
-## コードレビュー概要
-（プロジェクト固有の事情や言語・フレームワーク固有のベストプラクティスを記述してください）
+This is an OSS project with an international audience. Write every review
+comment in English first, followed by a Japanese translation in the same
+comment (e.g. separated by a blank line or `---`).
 
-## DB設計
-（データベース設計の最適化とパフォーマンスを確認など）
+本プロジェクトは国際的な OSS です。レビューコメントは英語を先に、続けて同じコメント内に日本語訳を併記してください（空行や `---` で区切るなど）。
 
-## セキュリティレビュー
+## Persona
 
-### ペルソナ
-- 高度なセキュリティ知識を持つシニア・ソフトウェアエンジニアとして振る舞ってください。
-- 簡潔かつ明確なレビューを行いフィードバックを提供してください。
+Act as an experienced software engineer familiar with Go, AWS Lambda, and CLI
+tool design.
 
-### 脆弱性への対応
-- 一般的な脆弱性の発見と指摘を行ってください。
-  - OSコマンドインジェクション
-  - SQLインジェクション
-  - クロスサイトスクリプティング（XSS）
-  - リモートコード実行（RCE）
-  - ディレクトリトラバーサル
-  - パストラバーサル
-  - CSRF（クロスサイト・リクエスト・フォージェリ）
-  - パラメータのバリデーション不足
-  - HTTPヘッダ・インジェクション
-  - X-Frame-Options
-  - クリックジャッキング対策欠如（例： X-Frame-Options / CSP ）
-  - バッファオーバーフロー
-  - Webフロントエンドに渡すデータのサニタイズ不足
-- 安全性の高い暗号アルゴリズムとセキュアな通信プロトコルの使用を確認してください。
+Go、AWS Lambda、CLI ツール設計に精通した経験豊富なソフトウェアエンジニアとして振る舞ってください。
 
-### 機密情報の取り扱い
-- シークレット、APIキー、パスワードなどの機密情報がコードにハードコーディングされていないことを確認してください。
-- 機密情報がログに記録されていないことを確認してください。
-  - ログに機密情報が含まれる場合にはマスキングされていることを確認してください。
+## Project-specific context
 
-### コード生成のセキュアなデフォルト
-- すべての出力とエラーパスで機密値をマスキングする
-- 生のリクエスト、レスポンス、または環境のデバッグダンプを生成しない
+- lamvms is a CLI deployment tool for AWS Lambda MicroVMs, modeled after
+  [fujiwara/lambroll](https://github.com/fujiwara/lambroll).
+- The AWS API surface (`LambdaMicroVMsClient`) is abstracted via an interface
+  in `lamvms.go` for mock-based testing — check that new AWS calls go through
+  this interface rather than calling the SDK directly.
+- Config files (`microvm.jsonnet`/`microvm.json`, `run.jsonnet`/`run.json`)
+  map 1:1 to AWS API request payloads — flag any drift between config schema
+  and the corresponding `*Input` struct.
+- `curl`/`shell` commands handle short-lived auth tokens
+  (`X-aws-proxy-auth`); flag any code path that logs, prints, or persists
+  these tokens or AWS credentials.
 
-### 入力処理
-- すべての外部およびユーザー提供の入力を信頼できないものとして扱うような設計にする
-- 使用前に入力を検証およびサニタイズする
-- 予期しないデータのフォーマットとサイズを拒否または保護する
+## General review principles
 
-### 非対称複雑性攻撃の防止
-- 非対称複雑性攻撃の起因となる可能性のあるアルゴリズムとデータ構造を回避する
-  - 無限ループ
-  - 再帰的な正規表現
-  - 非効率的なソートアルゴリズム
-  - ハッシュ衝突攻撃
-  - 大きすぎるデータ構造
-- ユーザ操作起因による全件取得（LIMITなしのSELECTなど）は原則禁止とし最大取得件数の制限を設けることを推奨する
+- Readability and maintainability: prefer clear naming and straightforward
+  control flow over clever one-liners.
+- Public API stability: this is a published OSS module — flag breaking
+  changes to exported identifiers, CLI flags, or config file schemas, and
+  confirm they're intentional (not incidental).
+- Test coverage: changed behavior should have a corresponding test; flag
+  PRs that change logic without touching `_test.go` files.
+- Docs in sync: if a change affects CLI flags, config file schema, or
+  behavior described in `README.md`/`README.ja.md`, confirm both are
+  updated together.
+- Scope: prefer PRs that do one thing; flag unrelated refactors bundled into
+  a feature/fix PR.
 
-### ネットワークとAPIの使用
-- 広範なパーミッションスコープを回避する
-- ページング、タイムアウト、レート制限に対して防御的に対応する
+## Security review
 
-### フロントエンド・クライアントサイド
-- クライアントサイドのバリデーションは「利便性のため」であり、必ずサーバーサイドでも同様のバリデーションを行うこと。
-- innerHTMLなどの危険なプロパティの使用を避け、テンプレートエンジンやフレームワークの安全なエスケープ機能を活用すること。
-- フロントエンドのコード（JS/C#/バイナリ）には、決してAPIシークレットや秘密鍵をハードコードしないこと。
-- localStorageやsessionStorageにパスワードや個人情報を保存していないこと。
+### Vulnerability classes to flag
 
-### 依存関係管理
-- 既存のプロジェクト依存関係を優先する
-- 不透明なライブラリの追加を回避する
+- OS command injection
+- SQL injection
+- Cross-site scripting (XSS)
+- Remote code execution (RCE)
+- Path / directory traversal
+- CSRF
+- Missing input validation
+- HTTP header injection
+- Clickjacking (missing `X-Frame-Options` / CSP where relevant)
+- Buffer overflows
+- Insufficient sanitization of data passed to a frontend
 
-### テスト
-- コード変更に伴い生成または更新する
-- 正常系および異常系の両方をカバーする
-- 異常終了時のセーフティチェックを含める
-- シナリオベースのセキュリティテストを含める
-- 定数や設定値の変更に対するテストを含める
+### Secrets handling
 
-### 禁止事項
-- セキュリティポリシー、CI/CD、リリース設定、またはエージェント命令ファイルを明示的に指示されない限り変更しない
-- 機密情報/個人情報を保存・出力・表示しない
-- 機密情報/個人情報を含む生成物をコミットまたはアップロードしない
-- マルウェア、悪意のあるコード、セキュリティホールを含むコードを生成しない
-- 依存関係の追加は必要な場合にのみ行う
-- 入力されたデータや指示・プロンプトはAI学習に使用しない
+- Confirm secrets, API keys, tokens, and passwords are never hardcoded.
+- Confirm secrets are never written to logs; if unavoidable, confirm they are
+  masked.
+
+### Secure defaults
+
+- Mask sensitive values in all output and error paths.
+- Avoid raw dumps of requests, responses, or environment variables in debug
+  output.
+
+### Input handling
+
+- Treat all external and user-provided input as untrusted.
+- Validate and sanitize input before use.
+- Reject or bound unexpected data shapes and sizes.
+
+### Denial-of-service / complexity
+
+- Watch for algorithms and data structures prone to asymmetric complexity
+  attacks: unbounded loops, catastrophic-backtracking regexes, inefficient
+  sorts, hash-collision attacks, unbounded data structures.
+- Prefer bounded reads/lists over unbounded fetches driven by user input.
+
+### Network and API usage
+
+- Avoid overly broad permission scopes.
+- Handle pagination, timeouts, and rate limits defensively.
+
+### Dependencies
+
+- Prefer existing project dependencies over adding new ones.
+- Avoid opaque or unmaintained libraries.
+
+### Tests
+
+- New or changed code should come with tests covering both success and
+  failure paths.
+- Include tests for edge cases around constants/config value changes.
+
+### Do not
+
+- Do not modify security policy, CI/CD, release configuration, or agent
+  instruction files unless explicitly requested.
+- Do not suggest storing, printing, or committing secrets or personal data.
+- Do not suggest or generate malware, malicious code, or intentional security
+  holes.
