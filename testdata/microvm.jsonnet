@@ -1,0 +1,8 @@
+{
+  Name: "test-microvm-jsonnet",
+  BaseImageArn: "arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1",
+  BuildRoleArn: "arn:aws:iam::123456789012:role/TestBuildRole",
+  CodeArtifact: {
+    Uri: "s3://test-bucket/artifact.zip",
+  },
+}
