@@ -2,6 +2,7 @@ package lamvms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -234,6 +235,9 @@ func dispatchCLI(ctx context.Context, sub string, usage func(), opts *CLIOptions
 		err = app.Logs(ctx, opts.Logs)
 	default:
 		usage()
+	}
+	if errors.Is(err, ErrDiff) {
+		return 2, nil
 	}
 	if err != nil {
 		return 1, err

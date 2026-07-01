@@ -51,44 +51,7 @@ func runInit(ctx context.Context, client LambdaMicroVMsClient, opt *InitOption) 
 		return 1, fmt.Errorf("get microvm image version: %w", err)
 	}
 
-	def := map[string]any{
-		"Name":         opt.ImageName,
-		"BaseImageArn": aws.ToString(versionOut.BaseImageArn),
-		"BuildRoleArn": aws.ToString(versionOut.BuildRoleArn),
-	}
-
-	if versionOut.CodeArtifact != nil {
-		ca, err := convertFromCodeArtifact(versionOut.CodeArtifact)
-		if err != nil {
-			slog.Warn("failed to convert CodeArtifact", "error", err)
-		} else if ca != nil {
-			def["CodeArtifact"] = ca
-		}
-	}
-	if versionOut.Description != nil {
-		def["Description"] = aws.ToString(versionOut.Description)
-	}
-	if versionOut.Hooks != nil {
-		def["Hooks"] = versionOut.Hooks
-	}
-	if len(versionOut.EnvironmentVariables) > 0 {
-		def["EnvironmentVariables"] = versionOut.EnvironmentVariables
-	}
-	if versionOut.Logging != nil {
-		lg, err := convertFromLogging(versionOut.Logging)
-		if err != nil {
-			slog.Warn("failed to convert Logging", "error", err)
-		} else if lg != nil {
-			def["Logging"] = lg
-		}
-	}
-	if len(versionOut.AdditionalOsCapabilities) > 0 {
-		def["AdditionalOsCapabilities"] = versionOut.AdditionalOsCapabilities
-	}
-	if len(versionOut.Resources) > 0 {
-		def["Resources"] = versionOut.Resources
-	}
-
+	def := buildRemoteMap(opt.ImageName, versionOut)
 	cleaned := omitEmptyValues(def)
 
 	data, err := json.MarshalIndent(cleaned, "", "  ")

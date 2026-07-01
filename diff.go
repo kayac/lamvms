@@ -3,14 +3,19 @@ package lamvms
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lambdamicrovms"
+	"github.com/fatih/color"
+	"github.com/kylelemons/godebug/diff"
 )
+
+// ErrDiff indicates that differences were found between local and remote configurations.
+var ErrDiff = errors.New("diff found")
 
 // Diff shows the diff between local and deployed MicroVM image configuration.
 func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
@@ -27,7 +32,10 @@ func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(colorDiff("", string(localJSON)))
+		fmt.Println(coloredDiff("", string(localJSON)))
+		if opt.ExitCode {
+			return ErrDiff
+		}
 		return nil
 	}
 
@@ -45,42 +53,7 @@ func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 		return fmt.Errorf("get microvm image version: %w", err)
 	}
 
-	remote := map[string]any{
-		"Name":         name,
-		"BaseImageArn": aws.ToString(versionOut.BaseImageArn),
-		"BuildRoleArn": aws.ToString(versionOut.BuildRoleArn),
-	}
-	if versionOut.CodeArtifact != nil {
-		ca, err := convertFromCodeArtifact(versionOut.CodeArtifact)
-		if err != nil {
-			slog.Warn("failed to convert CodeArtifact", "error", err)
-		} else if ca != nil {
-			remote["CodeArtifact"] = ca
-		}
-	}
-	if versionOut.Description != nil {
-		remote["Description"] = aws.ToString(versionOut.Description)
-	}
-	if versionOut.Hooks != nil {
-		remote["Hooks"] = versionOut.Hooks
-	}
-	if len(versionOut.EnvironmentVariables) > 0 {
-		remote["EnvironmentVariables"] = versionOut.EnvironmentVariables
-	}
-	if versionOut.Logging != nil {
-		lg, err := convertFromLogging(versionOut.Logging)
-		if err != nil {
-			slog.Warn("failed to convert Logging", "error", err)
-		} else if lg != nil {
-			remote["Logging"] = lg
-		}
-	}
-	if len(versionOut.AdditionalOsCapabilities) > 0 {
-		remote["AdditionalOsCapabilities"] = versionOut.AdditionalOsCapabilities
-	}
-	if len(versionOut.Resources) > 0 {
-		remote["Resources"] = versionOut.Resources
-	}
+	remote := buildRemoteMap(name, versionOut)
 
 	remoteJSON, err := marshalForDiff(omitEmptyValues(remote))
 	if err != nil {
@@ -93,17 +66,13 @@ func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 
 	if string(remoteJSON) == string(localJSON) {
 		slog.Info("no changes", "name", name, "version", version)
-		if opt.ExitCode {
-			return nil
-		}
 		return nil
 	}
 
-	diff := colorDiff(string(remoteJSON), string(localJSON))
-	fmt.Println(diff)
+	fmt.Println(coloredDiff(string(remoteJSON), string(localJSON)))
 
 	if opt.ExitCode {
-		os.Exit(2)
+		return ErrDiff
 	}
 	return nil
 }
@@ -116,32 +85,67 @@ func marshalForDiff(v any) ([]byte, error) {
 	return data, nil
 }
 
-func colorDiff(remote, local string) string {
-	remoteLines := strings.Split(remote, "\n")
-	localLines := strings.Split(local, "\n")
+func buildRemoteMap(name string, v *lambdamicrovms.GetMicrovmImageVersionOutput) map[string]any {
+	m := map[string]any{
+		"Name":         name,
+		"BaseImageArn": aws.ToString(v.BaseImageArn),
+		"BuildRoleArn": aws.ToString(v.BuildRoleArn),
+	}
+	if v.CodeArtifact != nil {
+		ca, err := convertFromCodeArtifact(v.CodeArtifact)
+		if err != nil {
+			slog.Warn("failed to convert CodeArtifact", "error", err)
+		} else if ca != nil {
+			m["CodeArtifact"] = ca
+		}
+	}
+	if v.Description != nil {
+		m["Description"] = aws.ToString(v.Description)
+	}
+	if v.Hooks != nil {
+		m["Hooks"] = v.Hooks
+	}
+	if len(v.EnvironmentVariables) > 0 {
+		m["EnvironmentVariables"] = v.EnvironmentVariables
+	}
+	if v.Logging != nil {
+		lg, err := convertFromLogging(v.Logging)
+		if err != nil {
+			slog.Warn("failed to convert Logging", "error", err)
+		} else if lg != nil {
+			m["Logging"] = lg
+		}
+	}
+	if len(v.AdditionalOsCapabilities) > 0 {
+		m["AdditionalOsCapabilities"] = v.AdditionalOsCapabilities
+	}
+	if len(v.Resources) > 0 {
+		m["Resources"] = v.Resources
+	}
+	return m
+}
+
+func coloredDiff(remote, local string) string {
+	d := diff.Diff(remote, local)
+	if d == "" {
+		return ""
+	}
+
+	red := color.New(color.FgRed)
+	green := color.New(color.FgGreen)
 
 	var buf strings.Builder
 	buf.WriteString("--- remote\n+++ local\n")
-
-	remoteSet := make(map[string]bool)
-	for _, line := range remoteLines {
-		remoteSet[line] = true
-	}
-	localSet := make(map[string]bool)
-	for _, line := range localLines {
-		localSet[line] = true
-	}
-
-	for _, line := range remoteLines {
-		if !localSet[line] {
-			fmt.Fprintf(&buf, "- %s\n", line)
+	for _, line := range strings.Split(d, "\n") {
+		switch {
+		case strings.HasPrefix(line, "-"):
+			buf.WriteString(red.Sprint(line))
+		case strings.HasPrefix(line, "+"):
+			buf.WriteString(green.Sprint(line))
+		default:
+			buf.WriteString(line)
 		}
+		buf.WriteByte('\n')
 	}
-	for _, line := range localLines {
-		if !remoteSet[line] {
-			fmt.Fprintf(&buf, "+ %s\n", line)
-		}
-	}
-
 	return buf.String()
 }

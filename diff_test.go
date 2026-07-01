@@ -48,6 +48,58 @@ func TestDiff_NoChanges(t *testing.T) {
 	}
 }
 
+func TestDiff_HasChanges(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	expectListFound(mock)
+
+	mock.EXPECT().
+		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
+			ImageArn:     aws.String(testImageARN),
+			ImageVersion: aws.String("1.0"),
+			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
+			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			State:        types.MicrovmImageVersionStateSuccessful,
+			Status:       types.MicrovmImageVersionStatusActive,
+		}, nil)
+
+	app := newTestApp(t, mock, "testdata/microvm.json")
+	err := app.Diff(context.Background(), &DiffOption{})
+	if err != nil {
+		t.Fatal("expected no error without --exit-code")
+	}
+}
+
+func TestDiff_HasChanges_ExitCode(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	expectListFound(mock)
+
+	mock.EXPECT().
+		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
+			ImageArn:     aws.String(testImageARN),
+			ImageVersion: aws.String("1.0"),
+			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
+			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			State:        types.MicrovmImageVersionStateSuccessful,
+			Status:       types.MicrovmImageVersionStatusActive,
+		}, nil)
+
+	app := newTestApp(t, mock, "testdata/microvm.json")
+	err := app.Diff(context.Background(), &DiffOption{ExitCode: true})
+	if err != ErrDiff {
+		t.Fatalf("expected ErrDiff, got %v", err)
+	}
+}
+
 func TestDiff_ImageNotFound(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
