@@ -21,6 +21,7 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
+      - CREDITS
 release:
   prerelease: auto
   use_existing_draft: true
