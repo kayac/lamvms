@@ -206,7 +206,7 @@ Press `Ctrl+D` to disconnect.
 Send a request to a running MicroVM via curl. Automatically handles auth token.
 
 ```bash
-lamvms curl [path] [curl-flags...]
+lamvms curl <path> [curl-flags...]
 ```
 
 | Flag | Description | Default |

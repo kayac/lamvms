@@ -206,7 +206,7 @@ lamvms shell [microvm-id]
 実行中の MicroVM に curl でリクエストを送信します。認証トークンを自動で処理します。
 
 ```bash
-lamvms curl [パス] [curl-フラグ...]
+lamvms curl <パス> [curl-フラグ...]
 ```
 
 | フラグ | 説明 | デフォルト |

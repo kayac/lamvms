@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -15,6 +16,14 @@ import (
 
 // Curl sends a request to a running MicroVM via curl.
 func (app *App) Curl(ctx context.Context, opt *CurlOption) error {
+	parsedPath, err := url.Parse(opt.Path)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+	if parsedPath.Scheme != "" || parsedPath.Host != "" {
+		return fmt.Errorf("path must be a relative path, not a full URL: %q", opt.Path)
+	}
+
 	id := opt.MicrovmID
 	if id == "" {
 		var err error
@@ -37,23 +46,16 @@ func (app *App) Curl(ctx context.Context, opt *CurlOption) error {
 		return err
 	}
 
-	path := "/"
-	var extraArgs []string
-	if len(opt.Args) > 0 && strings.HasPrefix(opt.Args[0], "/") {
-		path = opt.Args[0]
-		extraArgs = opt.Args[1:]
-	} else {
-		extraArgs = opt.Args
-	}
+	u := url.URL{Scheme: "https", Host: endpoint}
+	u = *u.JoinPath(opt.Path)
 
-	url := fmt.Sprintf("https://%s%s", endpoint, path)
-	command := []string{"--config", "-", url}
+	command := []string{"--config", "-", u.String()}
 	if opt.Port > 0 {
 		command = append(command, "-H", fmt.Sprintf("X-aws-proxy-port: %d", opt.Port))
 	}
-	command = append(command, extraArgs...)
+	command = append(command, opt.Args...)
 
-	slog.Debug("invoking curl", "url", url, "args", strings.Join(extraArgs, " "))
+	slog.Debug("invoking curl", "url", u.String(), "args", strings.Join(opt.Args, " "))
 	return execCurl(ctx, command, token)
 }
 

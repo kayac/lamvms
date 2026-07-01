@@ -131,7 +131,8 @@ type CurlOption struct {
 	MicrovmID       string        `help:"MicroVM ID. If omitted, select interactively." json:"microvm_id,omitempty"`
 	Port            int           `help:"Target port." default:"0" json:"port,omitempty"`
 	TokenExpiration time.Duration `help:"Auth token expiration duration." default:"5m" name:"token-expiration" json:"token_expiration,omitempty"`
-	Args            []string      `arg:"" optional:"" passthrough:"" help:"Arguments passed to curl (path and flags)."`
+	Path            string        `arg:"" help:"Request path."`
+	Args            []string      `arg:"" optional:"" passthrough:"" help:"Arguments passed to curl."`
 }
 
 // CLIParseFunc is the signature of the CLI parser function.
