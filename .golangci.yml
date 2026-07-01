@@ -13,12 +13,11 @@ linters:
   settings:
     errcheck:
       check-type-assertions: true
+  exclusions:
+    generated: strict
+    paths:
+      - testdata
 
 formatters:
   enable:
     - gofmt
-
-issues:
-  exclude-dirs:
-    - testdata
-  exclude-generated: strict
