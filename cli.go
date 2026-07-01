@@ -12,6 +12,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/fatih/color"
 	"github.com/fujiwara/sloghandler"
+	"github.com/kayac/lamvms/skillscmd"
 )
 
 // Option holds global flags shared across all subcommands.
@@ -34,19 +35,20 @@ type Option struct {
 type CLIOptions struct {
 	Option
 
-	Init      *InitOption      `cmd:"init" help:"Initialize a microvm definition from an existing image." json:"init,omitempty"`
-	Deploy    *DeployOption    `cmd:"deploy" help:"Deploy a MicroVM image." json:"deploy,omitempty"`
-	Diff      *DiffOption      `cmd:"diff" help:"Show diff between local and deployed configuration." json:"diff,omitempty"`
-	Wait      *WaitOption      `cmd:"wait" help:"Wait for a MicroVM image to be ready." json:"wait,omitempty"`
-	Rollback  *RollbackOption  `cmd:"rollback" help:"Rollback to the previous active version." json:"rollback,omitempty"`
-	Run       *RunOption       `cmd:"run" help:"Run a new MicroVM." json:"run,omitempty"`
-	Suspend   *SuspendOption   `cmd:"suspend" help:"Suspend a running MicroVM." json:"suspend,omitempty"`
-	Resume    *ResumeOption    `cmd:"resume" help:"Resume a suspended MicroVM." json:"resume,omitempty"`
-	Terminate *TerminateOption `cmd:"terminate" help:"Terminate a MicroVM." json:"terminate,omitempty"`
-	Shell     *ShellOption     `cmd:"shell" help:"Open a shell session to a running MicroVM." json:"shell,omitempty"`
-	Curl      *CurlOption      `cmd:"curl" help:"Send a request to a running MicroVM via curl." json:"curl,omitempty"`
-	Delete    *DeleteOption    `cmd:"delete" help:"Delete a MicroVM image." json:"delete,omitempty"`
-	Logs      *LogsOption      `cmd:"logs" help:"Show CloudWatch logs of a MicroVM image." json:"logs,omitempty"`
+	Init      *InitOption         `cmd:"init" help:"Initialize a microvm definition from an existing image." json:"init,omitempty"`
+	Deploy    *DeployOption       `cmd:"deploy" help:"Deploy a MicroVM image." json:"deploy,omitempty"`
+	Diff      *DiffOption         `cmd:"diff" help:"Show diff between local and deployed configuration." json:"diff,omitempty"`
+	Wait      *WaitOption         `cmd:"wait" help:"Wait for a MicroVM image to be ready." json:"wait,omitempty"`
+	Rollback  *RollbackOption     `cmd:"rollback" help:"Rollback to the previous active version." json:"rollback,omitempty"`
+	Run       *RunOption          `cmd:"run" help:"Run a new MicroVM." json:"run,omitempty"`
+	Suspend   *SuspendOption      `cmd:"suspend" help:"Suspend a running MicroVM." json:"suspend,omitempty"`
+	Resume    *ResumeOption       `cmd:"resume" help:"Resume a suspended MicroVM." json:"resume,omitempty"`
+	Terminate *TerminateOption    `cmd:"terminate" help:"Terminate a MicroVM." json:"terminate,omitempty"`
+	Shell     *ShellOption        `cmd:"shell" help:"Open a shell session to a running MicroVM." json:"shell,omitempty"`
+	Curl      *CurlOption         `cmd:"curl" help:"Send a request to a running MicroVM via curl." json:"curl,omitempty"`
+	Delete    *DeleteOption       `cmd:"delete" help:"Delete a MicroVM image." json:"delete,omitempty"`
+	Logs      *LogsOption         `cmd:"logs" help:"Show CloudWatch logs of a MicroVM image." json:"logs,omitempty"`
+	Skills    *skillscmd.Commands `cmd:"skills" help:"Manage agent skills." json:"-"`
 
 	Version struct{} `cmd:"version" help:"Show version." json:"-"`
 }
@@ -155,8 +157,40 @@ func ParseCLI(args []string) (string, *CLIOptions, func(), error) {
 		return "", nil, nil, fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	sub := strings.Fields(c.Command())[0]
+	fields := strings.Fields(c.Command())
+	sub := fields[0]
+	clearInactiveSkillsSubcommand(&opts, fields)
 	return sub, &opts, func() { _ = c.PrintUsage(true) }, nil
+}
+
+// clearInactiveSkillsSubcommand clears the non-selected skillscmd.Commands
+// pointer fields. Kong allocates all cmd:"" pointer fields under a command
+// group during parsing, so skillscmd.Commands.Run must not rely on their
+// nilness without this.
+func clearInactiveSkillsSubcommand(opts *CLIOptions, fields []string) {
+	if len(fields) < 2 || fields[0] != "skills" || opts.Skills == nil {
+		return
+	}
+	s := opts.Skills
+	sub := fields[1]
+	if sub != "list" {
+		s.List = nil
+	}
+	if sub != "install" {
+		s.Install = nil
+	}
+	if sub != "update" {
+		s.Update = nil
+	}
+	if sub != "reinstall" {
+		s.Reinstall = nil
+	}
+	if sub != "uninstall" {
+		s.Uninstall = nil
+	}
+	if sub != "status" {
+		s.Status = nil
+	}
 }
 
 // CLI is the main entry point. It parses CLI options, configures logging,
@@ -201,6 +235,13 @@ func dispatchCLI(ctx context.Context, sub string, usage func(), opts *CLIOptions
 	if sub == "init" {
 		slog.Info("lamvms", "version", Version)
 		return initCmd(ctx, &opts.Option, opts.Init)
+	}
+
+	if sub == "skills" {
+		if err := dispatchSkills(ctx, opts.Skills); err != nil {
+			return 1, err
+		}
+		return 0, nil
 	}
 
 	app, err := New(ctx, &opts.Option)

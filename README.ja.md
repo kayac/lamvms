@@ -260,6 +260,28 @@ lamvms logs [フラグ]
 | `--format` | ログ形式（`detailed`、`short`、`json`） | `detailed` |
 | `--filter-pattern` | CloudWatch フィルターパターン | |
 
+### skills
+
+LLM コーディングエージェント（Claude Code、Codex 等）に lamvms の使い方を教える、同梱の [Agent Skill](https://www.skillsmith.app/)（`SKILL.md`）を管理します。
+
+```bash
+lamvms skills list
+lamvms skills install [--scope user|repo] [--dry-run]
+lamvms skills update
+lamvms skills reinstall
+lamvms skills uninstall
+lamvms skills status
+```
+
+| フラグ | 説明 | デフォルト |
+|--------|------|-----------|
+| `--scope` | インストール範囲（`user` または `repo`） | `user` |
+| `--prefix` | インストール先ディレクトリを上書き | |
+| `--dry-run` | 実行内容を表示するのみ | `false` |
+| `--force` | 未管理のスキルを上書き、またはダウングレードを強制 | `false` |
+
+`install --scope repo` はリポジトリルートの `.agents/skills/` にインストールします。これをコミットしておけば、チームメンバーのエージェントも個別インストールなしで利用できます。
+
 ## グローバルフラグ
 
 | フラグ | 環境変数 | 説明 |

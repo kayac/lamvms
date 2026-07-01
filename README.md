@@ -260,6 +260,28 @@ lamvms logs [flags]
 | `--format` | Log format (`detailed`, `short`, `json`) | `detailed` |
 | `--filter-pattern` | CloudWatch filter pattern | |
 
+### skills
+
+Manage the bundled [Agent Skill](https://www.skillsmith.app/) (`SKILL.md`) that teaches LLM coding agents (Claude Code, Codex, etc.) how to use lamvms.
+
+```bash
+lamvms skills list
+lamvms skills install [--scope user|repo] [--dry-run]
+lamvms skills update
+lamvms skills reinstall
+lamvms skills uninstall
+lamvms skills status
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--scope` | Install scope (`user` or `repo`) | `user` |
+| `--prefix` | Override install directory | |
+| `--dry-run` | Preview changes without applying | `false` |
+| `--force` | Overwrite unmanaged skills or force downgrade | `false` |
+
+`install --scope repo` installs to `.agents/skills/` in the repository root, which can be committed so teammates' agents pick it up without installing individually.
+
 ## Global Flags
 
 | Flag | Env | Description |
