@@ -99,21 +99,17 @@ func (l *Loader) loadAndExpand(path string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 
-	var jsonBytes []byte
-	switch filepath.Ext(path) {
-	case ".jsonnet":
+	if filepath.Ext(path) == ".jsonnet" {
 		slog.Debug("evaluating jsonnet")
 		vm := l.jsonnetVM()
 		evaluated, err := vm.EvaluateAnonymousSnippet(path, string(src))
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate jsonnet %s: %w", path, err)
 		}
-		jsonBytes = []byte(evaluated)
-	default:
-		jsonBytes = src
+		return []byte(evaluated), nil
 	}
 
-	return l.expandTemplate(jsonBytes)
+	return l.expandTemplate(src)
 }
 
 func findMicrovmFile() (string, error) {

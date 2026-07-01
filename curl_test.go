@@ -89,6 +89,44 @@ func TestCurl_BuildsURLFromPath(t *testing.T) {
 	}
 }
 
+func TestCurl_PreservesQueryString(t *testing.T) {
+	argsFile := newFakeCurl(t)
+	t.Setenv("FAKE_CURL_ARGS_FILE", argsFile)
+
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+	mock.EXPECT().
+		GetMicrovm(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmOutput{
+			Endpoint: aws.String("abc.example.com"),
+		}, nil)
+	mock.EXPECT().
+		CreateMicrovmAuthToken(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.CreateMicrovmAuthTokenOutput{
+			AuthToken: map[string]string{"X-aws-proxy-auth": "test-token"},
+		}, nil)
+
+	app := &App{client: mock}
+	err := app.Curl(context.Background(), &CurlOption{
+		MicrovmID:       "test-id",
+		TokenExpiration: 5 * time.Minute,
+		Path:            "/search?q=x",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotArgs := strings.Split(strings.TrimRight(string(got), "\n"), "\n")
+	want := []string{"--config", "-", "https://abc.example.com/search?q=x"}
+	if strings.Join(gotArgs, " ") != strings.Join(want, " ") {
+		t.Errorf("curl args = %v, want %v", gotArgs, want)
+	}
+}
+
 func TestCurl_RejectsFullURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := NewMockLambdaMicroVMsClient(ctrl)

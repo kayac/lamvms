@@ -36,6 +36,19 @@ func TestLoader_LoadJsonnet(t *testing.T) {
 	}
 }
 
+func TestLoader_JsonnetOutputNotTemplateExpanded(t *testing.T) {
+	t.Parallel()
+	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
+	img, _, err := loader.Load("testdata/microvm_jsonnet_with_braces.jsonnet")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "contains literal braces: {{ not a go template }}"
+	if got := aws.ToString(img.Description); got != want {
+		t.Errorf("Description = %q, want %q", got, want)
+	}
+}
+
 func TestLoader_JsonnetEnvFunctions(t *testing.T) {
 	t.Setenv("TEST_MICROVM_NAME", "env-test-vm")
 	t.Setenv("TEST_ACCOUNT_ID", "999999999999")

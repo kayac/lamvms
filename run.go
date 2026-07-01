@@ -184,7 +184,11 @@ func (app *App) createAuthToken(ctx context.Context, microvmID string, expiratio
 	if err != nil {
 		return "", fmt.Errorf("create auth token: %w", err)
 	}
-	return out.AuthToken["X-aws-proxy-auth"], nil
+	token, ok := out.AuthToken["X-aws-proxy-auth"]
+	if !ok {
+		return "", fmt.Errorf("create auth token: response did not include an X-aws-proxy-auth token")
+	}
+	return token, nil
 }
 
 var defaultRunDefFiles = []string{

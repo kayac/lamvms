@@ -37,7 +37,7 @@ type ListOption struct{}
 
 // ModifyOption defines CLI options for install/update/reinstall/uninstall subcommands.
 type ModifyOption struct {
-	Scope  string `help:"install scope (user or repo)" default:"" enum:",user,repo"`
+	Scope  string `help:"install scope (user or repo)" default:"user" enum:"user,repo"`
 	Prefix string `help:"override install directory" default:""`
 	DryRun bool   `help:"preview changes without applying" name:"dry-run" default:"false"`
 	Force  bool   `help:"overwrite unmanaged skills or force downgrade" default:"false"`
@@ -54,7 +54,7 @@ func (o *ModifyOption) options() skillsmith.Options {
 
 // StatusOption defines CLI options for the status subcommand.
 type StatusOption struct {
-	Scope  string `help:"install scope (user or repo)" default:"" enum:",user,repo"`
+	Scope  string `help:"install scope (user or repo)" default:"user" enum:"user,repo"`
 	Prefix string `help:"override install directory" default:""`
 }
 

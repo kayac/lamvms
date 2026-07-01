@@ -91,6 +91,35 @@ func TestRun_WithAuthToken(t *testing.T) {
 	}
 }
 
+func TestRun_WithAuthToken_MissingTokenInResponse(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	expectListFound(mock)
+
+	mock.EXPECT().
+		RunMicrovm(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.RunMicrovmOutput{
+			MicrovmId:    aws.String("mvm-12345"),
+			Endpoint:     aws.String("mvm-12345.lambda-microvm.ap-northeast-1.on.aws"),
+			State:        types.MicrovmStatePending,
+			ImageVersion: aws.String("1.0"),
+		}, nil)
+
+	mock.EXPECT().
+		CreateMicrovmAuthToken(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.CreateMicrovmAuthTokenOutput{
+			AuthToken: map[string]string{},
+		}, nil)
+
+	app := newTestApp(t, mock, "testdata/microvm.json")
+	err := app.Run(context.Background(), &RunOption{Wait: false, CreateAuthToken: true, TokenExpiration: 30 * time.Minute, Output: "json"})
+	if err == nil {
+		t.Fatal("expected error when response has no X-aws-proxy-auth token")
+	}
+}
+
 func TestRun_ImageNotFound(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

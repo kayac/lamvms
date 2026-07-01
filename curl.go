@@ -46,8 +46,8 @@ func (app *App) Curl(ctx context.Context, opt *CurlOption) error {
 		return err
 	}
 
-	u := url.URL{Scheme: "https", Host: endpoint}
-	u = *u.JoinPath(opt.Path)
+	base := url.URL{Scheme: "https", Host: endpoint}
+	u := base.ResolveReference(parsedPath)
 
 	command := []string{"--config", "-", u.String()}
 	if opt.Port > 0 {
