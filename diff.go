@@ -9,15 +9,28 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/service/lambdamicrovms"
+	"github.com/aws/aws-sdk-go-v2/service/lambdamicrovms/types"
 	"github.com/fatih/color"
 	"github.com/kylelemons/godebug/diff"
 )
+
+// defaultMinimumMemoryInMiB is the baseline memory Lambda MicroVMs uses when
+// Resources is omitted. See https://docs.aws.amazon.com/lambda/latest/dg/microvms-images.html#microvms-images-sizing
+const defaultMinimumMemoryInMiB int32 = 2048
 
 // ErrDiff indicates that differences were found between local and remote configurations.
 var ErrDiff = errors.New("diff found")
 
 // Diff shows the diff between local and deployed MicroVM image configuration.
+//
+// Resources and EgressNetworkConnectors resolve to a fixed AWS-side default
+// when omitted locally, so the local value is filled with that default before
+// comparing. BaseImageVersion instead resolves to "the latest base image at
+// build time" when omitted, which always differs from whatever version is
+// currently deployed; diffing it is not actionable, so it is excluded from
+// the comparison whenever the local config doesn't pin a version.
 func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 	img := app.microvmImage
 	name := aws.ToString(img.Name)
@@ -54,12 +67,15 @@ func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 	}
 
 	remote := buildRemoteMap(name, versionOut)
+	if img.BaseImageVersion == nil {
+		delete(remote, "BaseImageVersion")
+	}
 
 	remoteJSON, err := marshalForDiff(omitEmptyValues(remote))
 	if err != nil {
 		return err
 	}
-	localJSON, err := marshalForDiff(img)
+	localJSON, err := marshalForDiff(fillDefaultValues(img))
 	if err != nil {
 		return err
 	}
@@ -75,6 +91,31 @@ func (app *App) Diff(ctx context.Context, opt *DiffOption) error {
 		return ErrDiff
 	}
 	return nil
+}
+
+// fillDefaultValues returns a copy of img with Resources and
+// EgressNetworkConnectors pre-filled to the value AWS resolves them to on the
+// server side when omitted, so that diffing against an omitted local field
+// does not report a spurious difference.
+func fillDefaultValues(img *MicrovmImage) *MicrovmImage {
+	filled := *img
+	if len(filled.Resources) == 0 {
+		filled.Resources = []types.Resources{
+			{MinimumMemoryInMiB: aws.Int32(defaultMinimumMemoryInMiB)},
+		}
+	}
+	if len(filled.EgressNetworkConnectors) == 0 {
+		baseImageARN, err := arn.Parse(aws.ToString(filled.BaseImageArn))
+		if err != nil {
+			slog.Warn("failed to parse BaseImageArn", "error", err)
+		} else {
+			filled.EgressNetworkConnectors = []string{
+				fmt.Sprintf("arn:%s:lambda:%s:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
+					baseImageARN.Partition, baseImageARN.Region),
+			}
+		}
+	}
+	return &filled
 }
 
 func marshalForDiff(v any) ([]byte, error) {
