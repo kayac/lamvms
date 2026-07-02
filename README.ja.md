@@ -155,7 +155,21 @@ MicroVM 実行設定。[RunMicrovm API](https://docs.aws.amazon.com/lambda/lates
 
 ### .microvmignore
 
-zip アーカイブの除外パターン（`.gitignore` と同様）。`microvm.json`、`microvm.jsonnet`、`.microvmignore`、`.git/*` はデフォルトで除外されます。
+zip アーカイブ作成時の除外パターン。1 行に 1 パターン。空行と `#` で始まる行は無視されます。
+
+パターンマッチは [`filepath.Match`](https://pkg.go.dev/path/filepath#Match) ベースで、**`.gitignore` とは仕様が異なります**:
+
+- `*` は `/` を跨ぎません。例えば `*.log` は `app.log` にはマッチしますが、`sub/app.log` にはマッチしません。
+- `/*` で終わるパターン（例: `dir/*`）は `dir/` 配下を深さに関わらずすべて除外します。
+
+`.microvmignore` に記載したパターンに加えて、以下のパターンがデフォルトで除外されます:
+
+- `.microvmignore`
+- `microvm.json`
+- `microvm.jsonnet`
+- `.git/*`
+
+シンボリックリンクは標準の `zip` コマンドと同様、デフォルトで実体展開（follow）されます。`deploy` に `--symlink` を渡すと、実体展開せずシンボリックリンクとしてアーカイブに格納します（`zip --symlink`/`-y` と同じ挙動）。実体展開する（デフォルトの）場合、ディレクトリを指すシンボリックリンクは展開されず、警告を出してスキップされます。
 
 ## テンプレート関数
 
@@ -203,6 +217,7 @@ lamvms deploy [フラグ]
 | `--wait` / `--no-wait` | ビルド完了を待機 | `true` |
 | `--keep-versions N` | 最新 N 件のアクティブバージョンを保持 | `0`（無効） |
 | `--dry-run` | 実行内容を表示するのみ | `false` |
+| `--symlink` | 実体展開せずシンボリックリンクとしてアーカイブに格納する（`zip --symlink` と同等） | `false` |
 
 ### wait
 
@@ -286,7 +301,7 @@ lamvms curl <パス> [curl-フラグ...]
 | フラグ | 説明 | デフォルト |
 |--------|------|-----------|
 | `--microvm-id` | MicroVM ID | インタラクティブ選択 |
-| `--port` | ターゲットポート | デフォルト（8080） |
+| `--port` | ターゲットポート | `0`（サーバー側デフォルト: 8080） |
 | `--token-expiration` | 認証トークンの有効期限 | `5m` |
 
 例:
@@ -305,7 +320,7 @@ lamvms resume [microvm-id]
 lamvms terminate [microvm-id]
 ```
 
-`resume` は `--create-auth-token` と `--token-expiration` で新しい認証トークンを生成できます。
+`resume` は `--create-auth-token` と `--token-expiration` で新しい認証トークンを生成できます。`--output`（`text` または `json`、デフォルト `text`）で出力形式を指定できます。
 
 ### delete
 
@@ -371,6 +386,11 @@ lamvms skills status
 | `--filter-command` | `LAMVMS_FILTER_COMMAND` | インタラクティブ選択用フィルターコマンド（例: `peco`、`fzf`）。値にスペースが含まれる場合は `sh -c` 経由で評価されます。 |
 | `-V key=value` | | Jsonnet 外部変数 |
 | `--ext-code key=code` | | Jsonnet 外部コード |
+
+## サンプル
+
+- [`_examples/simple`](_examples/simple) — HTTP とシェル ingress を持つ最小構成のデプロイ/実行設定
+- [`_examples/lifecycle-hooks`](_examples/lifecycle-hooks) — `Ready`/`Validate` イメージビルドフックを追加した構成
 
 ## ライセンス
 

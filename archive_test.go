@@ -3,8 +3,11 @@ package lamvms
 import (
 	"archive/zip"
 	"context"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,7 +19,7 @@ func TestCreateZipArchive(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "app.js"), []byte("console.log('hello')"), 0644)
 	os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte("FROM node:24"), 0644)
 
-	f, err := createZipArchive(dir, defaultExcludes)
+	f, err := createZipArchive(dir, defaultExcludes, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,6 +46,189 @@ func TestCreateZipArchive(t *testing.T) {
 	}
 }
 
+func TestCreateZipArchive_SymlinkFollowedByDefault(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "app.js"), []byte("hello"), 0644)
+	if err := os.Symlink("app.js", filepath.Join(dir, "link.js")); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := createZipArchive(dir, defaultExcludes, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+
+	r, err := zip.OpenReader(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	var found bool
+	for _, entry := range r.File {
+		if entry.Name != "link.js" {
+			continue
+		}
+		found = true
+		if entry.Mode()&fs.ModeSymlink != 0 {
+			t.Errorf("link.js entry mode = %v, want symlink bit unset (should be dereferenced)", entry.Mode())
+		}
+		rc, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rc.Close()
+		content, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(content); got != "hello" {
+			t.Errorf("link.js entry content = %q, want %q (link target contents)", got, "hello")
+		}
+	}
+	if !found {
+		t.Fatal("link.js not found in archive")
+	}
+}
+
+func TestCreateZipArchive_AbsoluteSymlinkFollowedByDefault(t *testing.T) {
+	t.Parallel()
+	outsideDir := t.TempDir()
+	targetPath := filepath.Join(outsideDir, "target.txt")
+	os.WriteFile(targetPath, []byte("outside content"), 0644)
+
+	dir := t.TempDir()
+	if err := os.Symlink(targetPath, filepath.Join(dir, "link.txt")); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := createZipArchive(dir, defaultExcludes, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+
+	r, err := zip.OpenReader(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	var found bool
+	for _, entry := range r.File {
+		if entry.Name != "link.txt" {
+			continue
+		}
+		found = true
+		rc, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rc.Close()
+		content, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(content); got != "outside content" {
+			t.Errorf("link.txt entry content = %q, want %q", got, "outside content")
+		}
+	}
+	if !found {
+		t.Fatal("link.txt not found in archive (absolute symlink target should still be resolved)")
+	}
+}
+
+func TestCreateZipArchive_SymlinkKeptWithOption(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "app.js"), []byte("hello"), 0644)
+	if err := os.Symlink("app.js", filepath.Join(dir, "link.js")); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := createZipArchive(dir, defaultExcludes, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+
+	r, err := zip.OpenReader(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	var found bool
+	for _, entry := range r.File {
+		if entry.Name != "link.js" {
+			continue
+		}
+		found = true
+		if entry.Mode()&fs.ModeSymlink == 0 {
+			t.Errorf("link.js entry mode = %v, want symlink bit set", entry.Mode())
+		}
+		rc, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rc.Close()
+		content, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(content); got != "app.js" {
+			t.Errorf("link.js entry content = %q, want %q (link target, not dereferenced)", got, "app.js")
+		}
+	}
+	if !found {
+		t.Fatal("link.js not found in archive")
+	}
+}
+
+func TestCreateZipArchive_EntryNamesUseSlash(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "sub", "nested"), 0755)
+	os.WriteFile(filepath.Join(dir, "sub", "nested", "app.js"), []byte("hello"), 0644)
+
+	f, err := createZipArchive(dir, defaultExcludes, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+
+	r, err := zip.OpenReader(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	names := make(map[string]bool)
+	for _, entry := range r.File {
+		names[entry.Name] = true
+		if strings.Contains(entry.Name, `\`) {
+			t.Errorf("entry name %q contains backslash, want / separator", entry.Name)
+		}
+	}
+	if !names["sub/nested/app.js"] {
+		t.Errorf("entry %q not found in archive, names = %v", "sub/nested/app.js", names)
+	}
+}
+
 func TestCreateZipArchive_Excludes(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -52,7 +238,7 @@ func TestCreateZipArchive_Excludes(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, ".git"), 0755)
 	os.WriteFile(filepath.Join(dir, ".git", "config"), []byte(""), 0644)
 
-	f, err := createZipArchive(dir, defaultExcludes)
+	f, err := createZipArchive(dir, defaultExcludes, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +272,7 @@ func TestCreateZipArchive_CustomIgnore(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, ".microvmignore"), []byte("secret.key\n"), 0644)
 
 	excludes := loadExcludes(dir)
-	f, err := createZipArchive(dir, excludes)
+	f, err := createZipArchive(dir, excludes, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,8 +360,8 @@ func TestLoadExcludes_WithFile(t *testing.T) {
 
 func TestCodeArtifactURI(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/gen/codeArtifact_uri.json")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/gen/codeArtifact_uri.json")
 	if err != nil {
 		t.Fatal(err)
 	}

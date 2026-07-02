@@ -155,7 +155,21 @@ If `--run-def` is not specified, lamvms searches for `run.jsonnet` then `run.jso
 
 ### .microvmignore
 
-Exclusion patterns for zip archive creation (like `.gitignore`). `microvm.json`, `microvm.jsonnet`, `.microvmignore`, and `.git/*` are excluded by default.
+Exclusion patterns for zip archive creation. One pattern per line; blank lines and lines starting with `#` are ignored.
+
+Pattern matching is based on [`filepath.Match`](https://pkg.go.dev/path/filepath#Match), **not** `.gitignore` semantics:
+
+- `*` does not cross a `/` boundary. For example, `*.log` matches `app.log` but not `sub/app.log`.
+- A pattern ending in `/*` (e.g. `dir/*`) excludes everything under `dir/`, at any depth.
+
+The following patterns are excluded by default, in addition to any listed in `.microvmignore`:
+
+- `.microvmignore`
+- `microvm.json`
+- `microvm.jsonnet`
+- `.git/*`
+
+Symbolic links are followed (dereferenced) by default, same as the standard `zip` command. Pass `--symlink` to `deploy` to store them as symlinks in the archive instead (same as `zip --symlink`/`-y`). When following (the default), a symlink pointing to a directory is skipped with a warning rather than being expanded.
 
 ## Template Functions
 
@@ -203,6 +217,7 @@ lamvms deploy [flags]
 | `--wait` / `--no-wait` | Wait for build completion | `true` |
 | `--keep-versions N` | Keep N latest active versions, delete older | `0` (disabled) |
 | `--dry-run` | Show what would be done | `false` |
+| `--symlink` | Keep symlinks in the archive instead of following them (same as `zip --symlink`) | `false` |
 
 ### wait
 
@@ -286,7 +301,7 @@ lamvms curl <path> [curl-flags...]
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--microvm-id` | MicroVM ID | Interactive selection |
-| `--port` | Target port | Default (8080) |
+| `--port` | Target port | `0` (server-side default: 8080) |
 | `--token-expiration` | Auth token expiration | `5m` |
 
 Example:
@@ -305,7 +320,7 @@ lamvms resume [microvm-id]
 lamvms terminate [microvm-id]
 ```
 
-`resume` supports `--create-auth-token` and `--token-expiration` to generate a fresh auth token.
+`resume` supports `--create-auth-token` and `--token-expiration` to generate a fresh auth token, and `--output` (`text` or `json`, default `text`) to control the output format.
 
 ### delete
 
@@ -371,6 +386,11 @@ lamvms skills status
 | `--filter-command` | `LAMVMS_FILTER_COMMAND` | Filter command for interactive selection (e.g. `peco`, `fzf`). If the value contains spaces, it is evaluated via `sh -c`. |
 | `-V key=value` | | Jsonnet external variables |
 | `--ext-code key=code` | | Jsonnet external code |
+
+## Examples
+
+- [`_examples/simple`](_examples/simple) — minimal deploy/run configuration with HTTP and shell ingress.
+- [`_examples/lifecycle-hooks`](_examples/lifecycle-hooks) — adds `Ready`/`Validate` image build hooks.
 
 ## License
 

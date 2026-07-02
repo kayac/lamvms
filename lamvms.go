@@ -66,7 +66,7 @@ func New(ctx context.Context, opt *Option) (*App, error) {
 		return nil, err
 	}
 
-	loader := NewLoader(ctx, awsCfg, opt.ExtStr, opt.ExtCode)
+	loader := NewLoader(awsCfg, opt.ExtStr, opt.ExtCode)
 
 	var profile string
 	if opt.Profile != nil {
@@ -81,7 +81,7 @@ func New(ctx context.Context, opt *Option) (*App, error) {
 		loader:        loader,
 	}
 
-	img, resolvedPath, err := app.loader.Load(opt.Microvm)
+	img, resolvedPath, err := app.loader.Load(ctx, opt.Microvm)
 	if err != nil {
 		return nil, err
 	}

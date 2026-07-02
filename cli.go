@@ -78,6 +78,7 @@ type DeployOption struct {
 	Wait         bool   `help:"Wait for the image build to complete." default:"true" negatable:"" json:"wait,omitempty"`
 	KeepVersions int    `help:"Number of latest versions to keep. Older versions will be deleted." default:"0" json:"keep_versions,omitempty"`
 	DryRun       bool   `help:"Dry run." default:"false" json:"dry_run,omitempty"`
+	Symlink      bool   `help:"Keep symlinks in the archive instead of following them (same as zip --symlink,-y)." default:"false" json:"symlink,omitempty"`
 }
 
 // WaitOption represents options for the wait subcommand.
