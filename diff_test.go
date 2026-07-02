@@ -33,18 +33,22 @@ func TestDiff_NoChanges(t *testing.T) {
 	mock.EXPECT().
 		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
-			ImageArn:     aws.String(testImageARN),
-			ImageVersion: aws.String("1.0"),
-			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
-			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/TestBuildRole"),
-			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
-			State:        types.MicrovmImageVersionStateSuccessful,
-			Status:       types.MicrovmImageVersionStatusActive,
+			ImageArn:                aws.String(testImageARN),
+			ImageVersion:            aws.String("1.0"),
+			BaseImageArn:            aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn:            aws.String("arn:aws:iam::123456789012:role/TestBuildRole"),
+			CodeArtifact:            &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			Resources:               []types.Resources{{MinimumMemoryInMiB: aws.Int32(2048)}},
+			EgressNetworkConnectors: []string{"arn:aws:lambda:ap-northeast-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS"},
+			BaseImageVersion:        aws.String("0.0"),
+			State:                   types.MicrovmImageVersionStateSuccessful,
+			Status:                  types.MicrovmImageVersionStatusActive,
 		}, nil)
 
 	app := newTestApp(t, mock, "testdata/microvm.json")
-	if err := app.Diff(context.Background(), &DiffOption{}); err != nil {
-		t.Fatal(err)
+	err := app.Diff(context.Background(), &DiffOption{ExitCode: true})
+	if err != nil {
+		t.Fatalf("expected no diff, got: %v", err)
 	}
 }
 
@@ -58,13 +62,15 @@ func TestDiff_HasChanges(t *testing.T) {
 	mock.EXPECT().
 		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
-			ImageArn:     aws.String(testImageARN),
-			ImageVersion: aws.String("1.0"),
-			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
-			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
-			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
-			State:        types.MicrovmImageVersionStateSuccessful,
-			Status:       types.MicrovmImageVersionStatusActive,
+			ImageArn:                aws.String(testImageARN),
+			ImageVersion:            aws.String("1.0"),
+			BaseImageArn:            aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn:            aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
+			CodeArtifact:            &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			Resources:               []types.Resources{{MinimumMemoryInMiB: aws.Int32(2048)}},
+			EgressNetworkConnectors: []string{"arn:aws:lambda:ap-northeast-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS"},
+			State:                   types.MicrovmImageVersionStateSuccessful,
+			Status:                  types.MicrovmImageVersionStatusActive,
 		}, nil)
 
 	app := newTestApp(t, mock, "testdata/microvm.json")
@@ -84,13 +90,15 @@ func TestDiff_HasChanges_ExitCode(t *testing.T) {
 	mock.EXPECT().
 		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
 		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
-			ImageArn:     aws.String(testImageARN),
-			ImageVersion: aws.String("1.0"),
-			BaseImageArn: aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
-			BuildRoleArn: aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
-			CodeArtifact: &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
-			State:        types.MicrovmImageVersionStateSuccessful,
-			Status:       types.MicrovmImageVersionStatusActive,
+			ImageArn:                aws.String(testImageARN),
+			ImageVersion:            aws.String("1.0"),
+			BaseImageArn:            aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn:            aws.String("arn:aws:iam::123456789012:role/DifferentRole"),
+			CodeArtifact:            &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			Resources:               []types.Resources{{MinimumMemoryInMiB: aws.Int32(2048)}},
+			EgressNetworkConnectors: []string{"arn:aws:lambda:ap-northeast-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS"},
+			State:                   types.MicrovmImageVersionStateSuccessful,
+			Status:                  types.MicrovmImageVersionStatusActive,
 		}, nil)
 
 	app := newTestApp(t, mock, "testdata/microvm.json")
@@ -138,6 +146,7 @@ func TestDiff_NoChanges_AllFields(t *testing.T) {
 			BaseImageVersion:        aws.String("1"),
 			CpuConfigurations:       []types.CpuConfiguration{{Architecture: types.ArchitectureArm64}},
 			EgressNetworkConnectors: []string{"arn:aws:lambda:ap-northeast-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS"},
+			Resources:               []types.Resources{{MinimumMemoryInMiB: aws.Int32(2048)}},
 			State:                   types.MicrovmImageVersionStateSuccessful,
 			Status:                  types.MicrovmImageVersionStatusActive,
 		}, nil)
@@ -146,6 +155,56 @@ func TestDiff_NoChanges_AllFields(t *testing.T) {
 	err := app.Diff(context.Background(), &DiffOption{ExitCode: true})
 	if err != nil {
 		t.Fatalf("expected no diff when all fields match, got: %v", err)
+	}
+}
+
+func TestDiff_HasChanges_BaseImageVersionPinned(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	mock.EXPECT().
+		ListMicrovmImages(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.ListMicrovmImagesOutput{
+			Items: []types.MicrovmImageSummary{
+				{Name: aws.String("test-microvm-full"), ImageArn: aws.String(testImageARN), State: types.MicrovmImageStateCreated},
+			},
+		}, nil)
+	mock.EXPECT().
+		GetMicrovmImage(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageOutput{
+			Name:                     aws.String("test-microvm-full"),
+			ImageArn:                 aws.String(testImageARN),
+			State:                    types.MicrovmImageStateCreated,
+			LatestActiveImageVersion: aws.String("1.0"),
+		}, nil)
+
+	mock.EXPECT().
+		GetMicrovmImageVersion(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.GetMicrovmImageVersionOutput{
+			ImageArn:             aws.String(testImageARN),
+			ImageVersion:         aws.String("1.0"),
+			BaseImageArn:         aws.String("arn:aws:lambda:ap-northeast-1:aws:microvm-image:al2023-1"),
+			BuildRoleArn:         aws.String("arn:aws:iam::123456789012:role/TestBuildRole"),
+			CodeArtifact:         &types.CodeArtifactMemberUri{Value: "s3://test-bucket/artifact.zip"},
+			Description:          aws.String("test description"),
+			EnvironmentVariables: map[string]string{"ENV_KEY": "env_value"},
+			Logging: &types.LoggingMemberCloudWatch{
+				Value: types.CloudWatchLogging{LogGroup: aws.String("/aws/lambda/microvms/test")},
+			},
+			Tags:                    map[string]string{"env": "test", "project": "lamvms"},
+			BaseImageVersion:        aws.String("2"),
+			CpuConfigurations:       []types.CpuConfiguration{{Architecture: types.ArchitectureArm64}},
+			EgressNetworkConnectors: []string{"arn:aws:lambda:ap-northeast-1:aws:network-connector:aws-network-connector:INTERNET_EGRESS"},
+			Resources:               []types.Resources{{MinimumMemoryInMiB: aws.Int32(2048)}},
+			State:                   types.MicrovmImageVersionStateSuccessful,
+			Status:                  types.MicrovmImageVersionStatusActive,
+		}, nil)
+
+	app := newTestApp(t, mock, "testdata/microvm_full.json")
+	err := app.Diff(context.Background(), &DiffOption{ExitCode: true})
+	if err != ErrDiff {
+		t.Fatalf("expected ErrDiff for a pinned BaseImageVersion mismatch, got: %v", err)
 	}
 }
 
