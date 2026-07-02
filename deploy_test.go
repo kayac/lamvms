@@ -19,8 +19,8 @@ const testImageARN = "arn:aws:lambda:ap-northeast-1:123456789012:microvm-image:t
 
 func newTestApp(t *testing.T, client LambdaMicroVMsClient, fixturePath string) *App {
 	t.Helper()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load(fixturePath)
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}

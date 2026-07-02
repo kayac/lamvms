@@ -14,7 +14,6 @@ import (
 
 type callerIdentity struct {
 	cfg     aws.Config
-	ctx     context.Context
 	once    sync.Once
 	account string
 	arn     string
@@ -22,14 +21,14 @@ type callerIdentity struct {
 	err     error
 }
 
-func newCallerIdentity(ctx context.Context, cfg aws.Config) *callerIdentity {
-	return &callerIdentity{cfg: cfg, ctx: ctx}
+func newCallerIdentity(cfg aws.Config) *callerIdentity {
+	return &callerIdentity{cfg: cfg}
 }
 
-func (c *callerIdentity) resolve() {
+func (c *callerIdentity) resolve(ctx context.Context) {
 	c.once.Do(func() {
 		client := sts.NewFromConfig(c.cfg)
-		out, err := client.GetCallerIdentity(c.ctx, &sts.GetCallerIdentityInput{})
+		out, err := client.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 		if err != nil {
 			c.err = fmt.Errorf("failed to get caller identity: %w", err)
 			return
@@ -47,8 +46,8 @@ type CallerIdentityData struct {
 	UserID  string
 }
 
-func (c *callerIdentity) data() (*CallerIdentityData, error) {
-	c.resolve()
+func (c *callerIdentity) data(ctx context.Context) (*CallerIdentityData, error) {
+	c.resolve(ctx)
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -59,21 +58,21 @@ func (c *callerIdentity) data() (*CallerIdentityData, error) {
 	}, nil
 }
 
-func (c *callerIdentity) templateFuncMap() template.FuncMap {
+func (c *callerIdentity) templateFuncMap(ctx context.Context) template.FuncMap {
 	return template.FuncMap{
 		"caller_identity": func() (*CallerIdentityData, error) {
-			return c.data()
+			return c.data(ctx)
 		},
 	}
 }
 
-func (c *callerIdentity) jsonnetNativeFuncs() []*jsonnet.NativeFunction {
+func (c *callerIdentity) jsonnetNativeFuncs(ctx context.Context) []*jsonnet.NativeFunction {
 	return []*jsonnet.NativeFunction{
 		{
 			Name:   "caller_identity",
 			Params: jsonnetAst.Identifiers{},
 			Func: func(args []any) (any, error) {
-				d, err := c.data()
+				d, err := c.data(ctx)
 				if err != nil {
 					return nil, err
 				}

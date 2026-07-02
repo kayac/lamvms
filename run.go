@@ -34,7 +34,7 @@ func (app *App) Run(ctx context.Context, opt *RunOption) error {
 
 	runDefPath := app.resolveRunDefPath(opt.RunDef)
 	if runDefPath != "" {
-		rc, err := app.loader.LoadRunConfig(runDefPath)
+		rc, err := app.loader.LoadRunConfig(ctx, runDefPath)
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,7 @@ import (
 const (
 	shellPingInterval = 1 * time.Second
 	shellPongTimeout  = 3 * time.Second
+	shellInitTimeout  = 30 * time.Second
 )
 
 // Shell opens an interactive shell session to a running MicroVM.
@@ -83,7 +84,7 @@ func (app *App) Shell(ctx context.Context, opt *ShellOption) error {
 		}
 	}
 
-	if err := conn.SetReadDeadline(time.Now().Add(shellPongTimeout)); err != nil {
+	if err := conn.SetReadDeadline(time.Now().Add(shellInitTimeout)); err != nil {
 		closeConn()
 		return fmt.Errorf("set initial read deadline: %w", err)
 	}

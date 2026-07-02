@@ -93,7 +93,7 @@ func (app *App) prepareCodeArtifact(ctx context.Context, opt *DeployOption, img 
 
 	src := filepath.Join(filepath.Dir(app.microvmFilePath), opt.Src)
 	excludes := loadExcludes(src)
-	zipfile, err := createZipArchive(src, excludes)
+	zipfile, err := createZipArchive(src, excludes, opt.Symlink)
 	if err != nil {
 		return fmt.Errorf("failed to create archive: %w", err)
 	}

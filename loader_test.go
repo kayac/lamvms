@@ -11,8 +11,8 @@ import (
 
 func TestLoader_LoadJSON(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm.json")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,8 +26,8 @@ func TestLoader_LoadJSON(t *testing.T) {
 
 func TestLoader_LoadJsonnet(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm.jsonnet")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm.jsonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,8 +38,8 @@ func TestLoader_LoadJsonnet(t *testing.T) {
 
 func TestLoader_JsonnetOutputNotTemplateExpanded(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm_jsonnet_with_braces.jsonnet")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm_jsonnet_with_braces.jsonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,8 +53,8 @@ func TestLoader_JsonnetEnvFunctions(t *testing.T) {
 	t.Setenv("TEST_MICROVM_NAME", "env-test-vm")
 	t.Setenv("TEST_ACCOUNT_ID", "999999999999")
 
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm_with_env.jsonnet")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm_with_env.jsonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,8 +70,8 @@ func TestLoader_JsonnetEnvFunctions(t *testing.T) {
 func TestLoader_JsonnetEnvDefault(t *testing.T) {
 	t.Setenv("TEST_MICROVM_NAME", "default-test")
 
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm_with_env.jsonnet")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm_with_env.jsonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,8 +83,8 @@ func TestLoader_JsonnetEnvDefault(t *testing.T) {
 
 func TestLoader_JsonnetMustEnvMissing(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	_, _, err := loader.Load("testdata/microvm_with_env.jsonnet")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	_, _, err := loader.Load(context.Background(), "testdata/microvm_with_env.jsonnet")
 	if err == nil {
 		t.Fatal("expected error for missing must_env variable, got nil")
 	}
@@ -93,8 +93,8 @@ func TestLoader_JsonnetMustEnvMissing(t *testing.T) {
 func TestLoader_TemplateExpansion(t *testing.T) {
 	t.Setenv("TEST_ACCOUNT_ID", "888888888888")
 
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	img, _, err := loader.Load("testdata/microvm_template.json")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm_template.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,8 +108,8 @@ func TestLoader_TemplateEnvOverride(t *testing.T) {
 	t.Setenv("TEST_ACCOUNT_ID", "888888888888")
 	t.Setenv("TEST_BUCKET", "custom-bucket")
 
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	_, _, err := loader.Load("testdata/microvm_template.json")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	_, _, err := loader.Load(context.Background(), "testdata/microvm_template.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,8 +117,8 @@ func TestLoader_TemplateEnvOverride(t *testing.T) {
 
 func TestLoader_ExtStr(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, map[string]string{"name": "ext-str-vm"}, nil)
-	img, _, err := loader.Load("testdata/microvm_extstr.jsonnet")
+	loader := NewLoader(aws.Config{}, map[string]string{"name": "ext-str-vm"}, nil)
+	img, _, err := loader.Load(context.Background(), "testdata/microvm_extstr.jsonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,8 +129,8 @@ func TestLoader_ExtStr(t *testing.T) {
 
 func TestLoader_FileNotFound(t *testing.T) {
 	t.Parallel()
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
-	_, _, err := loader.Load("testdata/nonexistent.json")
+	loader := NewLoader(aws.Config{}, nil, nil)
+	_, _, err := loader.Load(context.Background(), "testdata/nonexistent.json")
 	if err == nil {
 		t.Fatal("expected error for nonexistent file, got nil")
 	}
@@ -145,10 +145,10 @@ func TestGeneratedFixtures(t *testing.T) {
 	if len(files) == 0 {
 		t.Fatal("no generated fixtures found in testdata/gen/; run go generate")
 	}
-	loader := NewLoader(context.Background(), aws.Config{}, nil, nil)
+	loader := NewLoader(aws.Config{}, nil, nil)
 	for _, f := range files {
 		t.Run(filepath.Base(f), func(t *testing.T) {
-			img, _, err := loader.Load(f)
+			img, _, err := loader.Load(context.Background(), f)
 			if err != nil {
 				t.Fatalf("load: %v", err)
 			}

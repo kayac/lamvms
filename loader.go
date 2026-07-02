@@ -24,39 +24,23 @@ var DefaultMicrovmFiles = []string{
 
 // Loader loads and evaluates microvm definition files.
 type Loader struct {
-	extStr      map[string]string
-	extCode     map[string]string
-	nativeFuncs []*jsonnet.NativeFunction
-	funcMap     template.FuncMap
+	extStr   map[string]string
+	extCode  map[string]string
+	callerID *callerIdentity
 }
 
 // NewLoader creates a Loader with Jsonnet native functions and template functions.
-func NewLoader(ctx context.Context, awsCfg aws.Config, extStr, extCode map[string]string) *Loader {
-	callerID := newCallerIdentity(ctx, awsCfg)
-
-	nativeFuncs := []*jsonnet.NativeFunction{
-		nativeFuncEnv(),
-		nativeFuncMustEnv(),
-	}
-	nativeFuncs = append(nativeFuncs, callerID.jsonnetNativeFuncs()...)
-
-	funcMap := template.FuncMap{
-		"env":      templateFuncEnv,
-		"must_env": templateFuncMustEnv,
-	}
-	maps.Copy(funcMap, callerID.templateFuncMap())
-
+func NewLoader(awsCfg aws.Config, extStr, extCode map[string]string) *Loader {
 	return &Loader{
-		extStr:      extStr,
-		extCode:     extCode,
-		nativeFuncs: nativeFuncs,
-		funcMap:     funcMap,
+		extStr:   extStr,
+		extCode:  extCode,
+		callerID: newCallerIdentity(awsCfg),
 	}
 }
 
 // Load loads a MicrovmImage from the given path and returns the resolved path.
 // If path is empty, it searches for default files.
-func (l *Loader) Load(path string) (*MicrovmImage, string, error) {
+func (l *Loader) Load(ctx context.Context, path string) (*MicrovmImage, string, error) {
 	var err error
 	if path == "" {
 		path, err = findMicrovmFile()
@@ -65,7 +49,7 @@ func (l *Loader) Load(path string) (*MicrovmImage, string, error) {
 		}
 	}
 
-	expanded, err := l.loadAndExpand(path)
+	expanded, err := l.loadAndExpand(ctx, path)
 	if err != nil {
 		return nil, "", err
 	}
@@ -78,8 +62,8 @@ func (l *Loader) Load(path string) (*MicrovmImage, string, error) {
 }
 
 // LoadRunConfig loads a RunConfig from the given path.
-func (l *Loader) LoadRunConfig(path string) (*RunConfig, error) {
-	expanded, err := l.loadAndExpand(path)
+func (l *Loader) LoadRunConfig(ctx context.Context, path string) (*RunConfig, error) {
+	expanded, err := l.loadAndExpand(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +75,7 @@ func (l *Loader) LoadRunConfig(path string) (*RunConfig, error) {
 	return &rc, nil
 }
 
-func (l *Loader) loadAndExpand(path string) ([]byte, error) {
+func (l *Loader) loadAndExpand(ctx context.Context, path string) ([]byte, error) {
 	slog.Info("loading definition", "path", path)
 
 	src, err := os.ReadFile(path)
@@ -101,7 +85,7 @@ func (l *Loader) loadAndExpand(path string) ([]byte, error) {
 
 	if filepath.Ext(path) == ".jsonnet" {
 		slog.Debug("evaluating jsonnet")
-		vm := l.jsonnetVM()
+		vm := l.jsonnetVM(ctx)
 		evaluated, err := vm.EvaluateAnonymousSnippet(path, string(src))
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate jsonnet %s: %w", path, err)
@@ -109,7 +93,7 @@ func (l *Loader) loadAndExpand(path string) ([]byte, error) {
 		return []byte(evaluated), nil
 	}
 
-	return l.expandTemplate(src)
+	return l.expandTemplate(ctx, src)
 }
 
 func findMicrovmFile() (string, error) {
@@ -121,7 +105,7 @@ func findMicrovmFile() (string, error) {
 	return "", fmt.Errorf("no microvm definition file found (searched: %v)", DefaultMicrovmFiles)
 }
 
-func (l *Loader) jsonnetVM() *jsonnet.VM {
+func (l *Loader) jsonnetVM(ctx context.Context) *jsonnet.VM {
 	vm := jsonnet.MakeVM()
 	for k, v := range l.extStr {
 		vm.ExtVar(k, v)
@@ -129,7 +113,13 @@ func (l *Loader) jsonnetVM() *jsonnet.VM {
 	for k, v := range l.extCode {
 		vm.ExtCode(k, v)
 	}
-	for _, f := range l.nativeFuncs {
+
+	nativeFuncs := []*jsonnet.NativeFunction{
+		nativeFuncEnv(),
+		nativeFuncMustEnv(),
+	}
+	nativeFuncs = append(nativeFuncs, l.callerID.jsonnetNativeFuncs(ctx)...)
+	for _, f := range nativeFuncs {
 		vm.NativeFunction(f)
 	}
 	return vm
@@ -177,8 +167,14 @@ func nativeFuncMustEnv() *jsonnet.NativeFunction {
 	}
 }
 
-func (l *Loader) expandTemplate(src []byte) ([]byte, error) {
-	tmpl, err := template.New("microvm").Funcs(l.funcMap).Parse(string(src))
+func (l *Loader) expandTemplate(ctx context.Context, src []byte) ([]byte, error) {
+	funcMap := template.FuncMap{
+		"env":      templateFuncEnv,
+		"must_env": templateFuncMustEnv,
+	}
+	maps.Copy(funcMap, l.callerID.templateFuncMap(ctx))
+
+	tmpl, err := template.New("microvm").Funcs(funcMap).Parse(string(src))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}

@@ -27,7 +27,7 @@ var defaultExcludes = []string{
 	".git/*",
 }
 
-func createZipArchive(src string, excludes []string) (*os.File, error) {
+func createZipArchive(src string, excludes []string, keepSymlink bool) (*os.File, error) {
 	slog.Info("creating zip archive", "src", src)
 	tmpfile, err := os.CreateTemp("", "lamvms-archive-*.zip")
 	if err != nil {
@@ -45,12 +45,13 @@ func createZipArchive(src string, excludes []string) (*os.File, error) {
 		if err != nil {
 			return err
 		}
+		relpath = filepath.ToSlash(relpath)
 		if matchExcludes(relpath, excludes) {
 			slog.Debug("skipping", "path", relpath)
 			return nil
 		}
 		slog.Debug("archiving", "path", relpath)
-		return addToZip(w, path, relpath, d)
+		return addToZip(w, path, relpath, d, keepSymlink)
 	})
 	cleanup := func() {
 		if err := tmpfile.Close(); err != nil {
@@ -81,20 +82,41 @@ func createZipArchive(src string, excludes []string) (*os.File, error) {
 	return tmpfile, nil
 }
 
-func addToZip(z *zip.Writer, path, relpath string, d fs.DirEntry) error {
+func addToZip(z *zip.Writer, path, relpath string, d fs.DirEntry, keepSymlink bool) error {
 	info, err := d.Info()
 	if err != nil {
 		return err
 	}
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			slog.Warn("failed to close file", "path", path, "error", err)
+
+	var r io.Reader
+	if info.Mode()&fs.ModeSymlink != 0 {
+		if keepSymlink {
+			link, err := os.Readlink(path)
+			if err != nil {
+				return fmt.Errorf("failed to read symlink %s: %w", path, err)
+			}
+			r = strings.NewReader(link)
+		} else {
+			resolvedPath, resolvedInfo, err := followSymlink(path)
+			if err != nil {
+				slog.Warn("failed to follow symlink, skipping", "path", path, "error", err)
+				return nil
+			}
+			path, info = resolvedPath, resolvedInfo
 		}
-	}()
+	}
+	if r == nil {
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				slog.Warn("failed to close file", "path", path, "error", err)
+			}
+		}()
+		r = f
+	}
 
 	header, err := zip.FileInfoHeader(info)
 	if err != nil {
@@ -106,8 +128,24 @@ func addToZip(z *zip.Writer, path, relpath string, d fs.DirEntry) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(w, f)
+	_, err = io.Copy(w, r)
 	return err
+}
+
+func followSymlink(path string) (string, fs.FileInfo, error) {
+	link, err := os.Readlink(path)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read symlink %s: %w", path, err)
+	}
+	target := filepath.Join(filepath.Dir(path), link)
+	info, err := os.Stat(target)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to stat symlink target %s: %w", target, err)
+	}
+	if info.IsDir() {
+		return "", nil, fmt.Errorf("symlink target is a directory: %s", target)
+	}
+	return target, info, nil
 }
 
 func matchExcludes(path string, excludes []string) bool {
