@@ -305,7 +305,7 @@ lamvms resume [microvm-id]
 lamvms terminate [microvm-id]
 ```
 
-`resume` supports `--create-auth-token` and `--token-expiration` to generate a fresh auth token.
+`resume` supports `--create-auth-token` and `--token-expiration` to generate a fresh auth token, and `--output` (`text` or `json`, default `text`) to control the output format.
 
 ### delete
 

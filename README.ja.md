@@ -305,7 +305,7 @@ lamvms resume [microvm-id]
 lamvms terminate [microvm-id]
 ```
 
-`resume` は `--create-auth-token` と `--token-expiration` で新しい認証トークンを生成できます。
+`resume` は `--create-auth-token` と `--token-expiration` で新しい認証トークンを生成できます。`--output`（`text` または `json`、デフォルト `text`）で出力形式を指定できます。
 
 ### delete
 
