@@ -6,6 +6,8 @@
 
 コミットメッセージは英語を先に書き、続けて日本語訳を併記する（本プロジェクトは OSS で国際的な読者を想定しているため）。
 
+PR を作成する際は、タイトルは英語のみ。本文（Description）は英語を先に書き、続けて日本語訳を併記する。
+
 ## プロジェクト概要
 
 lamvms は AWS Lambda MicroVMs 用の CLI デプロイツール。[fujiwara/lambroll](https://github.com/fujiwara/lambroll) を参考にしている。MicroVM イメージのライフサイクル（deploy, wait, rollback）と MicroVM インスタンスのライフサイクル（run, suspend, resume, terminate）を管理する。
