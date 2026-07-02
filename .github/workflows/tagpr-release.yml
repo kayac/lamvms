@@ -47,7 +47,8 @@ jobs:
         env:
           TAGPR_HEAD_REF: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
         run: |
-          go run github.com/Songmu/gocredits/cmd/gocredits@v0.4.0 . > CREDITS
+          go mod download
+          go run github.com/Songmu/gocredits/cmd/gocredits@v0.4.0 -skip-missing . > CREDITS
           if git diff --exit-code CREDITS; then
             exit 0
           fi
