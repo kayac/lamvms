@@ -1,0 +1,23 @@
+version: "2"
+
+run:
+  tests: false
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+  settings:
+    errcheck:
+      check-type-assertions: true
+  exclusions:
+    generated: strict
+    paths:
+      - testdata
+
+formatters:
+  enable:
+    - gofmt

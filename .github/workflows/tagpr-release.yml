@@ -1,0 +1,66 @@
+name: tagpr and release
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag"
+        required: false
+        type: string
+
+permissions:
+  pull-requests: write
+  packages: write
+  contents: write
+  actions: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: Songmu/tagpr@e84001bd5dac8defa0c75b3913937d284a3b3660 # v1
+        id: tagpr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name != 'workflow_dispatch'
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - name: Checkout release PR branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
+          fetch-depth: 0
+        if: steps.tagpr.outputs.tag == '' && github.event_name != 'workflow_dispatch'
+
+      - name: Update CREDITS
+        if: steps.tagpr.outputs.tag == '' && github.event_name != 'workflow_dispatch'
+        env:
+          TAGPR_HEAD_REF: ${{ fromJSON(steps.tagpr.outputs.pull_request).head.ref }}
+        run: |
+          go run github.com/Songmu/gocredits/cmd/gocredits@v0.4.0 . > CREDITS
+          if git diff --exit-code CREDITS; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CREDITS
+          git commit -m "chore: update CREDITS"
+          git push origin "HEAD:$TAGPR_HEAD_REF"
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          version: "~> v2"
+          args: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.tagpr.outputs.tag != '' || github.event_name == 'workflow_dispatch'
