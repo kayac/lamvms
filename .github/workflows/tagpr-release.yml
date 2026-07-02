@@ -49,12 +49,12 @@ jobs:
         run: |
           go mod download
           go run github.com/Songmu/gocredits/cmd/gocredits@v0.4.0 -skip-missing . > CREDITS
+          git add CREDITS
           if git diff --exit-code CREDITS; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CREDITS
           git commit -m "chore: update CREDITS"
           git push origin "HEAD:$TAGPR_HEAD_REF"
 
