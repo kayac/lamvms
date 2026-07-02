@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.26
 	github.com/aws/aws-sdk-go-v2/service/lambdamicrovms v1.0.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.2
-	github.com/aws/aws-sdk-go-v2/service/sts v1.43.4
+	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5
 	github.com/fatih/color v1.19.0
 	github.com/fujiwara/sloghandler v0.1.0
 	github.com/google/go-jsonnet v0.22.0
