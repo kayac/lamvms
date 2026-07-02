@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.1.0](https://github.com/kayac/lamvms/compare/v0.0.1...v0.1.0) - 2026-07-02
+
+- Add PR title/description language guideline to CLAUDE.md by @mashiike in https://github.com/kayac/lamvms/pull/15
+- fix: address pre-v0.1.0 quality report findings by @mashiike in https://github.com/kayac/lamvms/pull/17
+- chore(deps): Bump github.com/aws/aws-sdk-go-v2/service/s3 from 1.104.1 to 1.104.2 by @dependabot[bot] in https://github.com/kayac/lamvms/pull/11
+- chore(dependabot): group aws-sdk-go-v2 updates into a single PR by @mashiike in https://github.com/kayac/lamvms/pull/18
+- chore(deps): Bump github.com/aws/aws-sdk-go-v2/service/sts from 1.43.4 to 1.43.5 by @dependabot[bot] in https://github.com/kayac/lamvms/pull/7
+- fix: stop diffing MicroVM image fields AWS resolves server-side by @mashiike in https://github.com/kayac/lamvms/pull/20
+
 ## [v0.0.1](https://github.com/kayac/lamvms/commits/v0.0.1) - 2026-07-02
 
 - Initial lamvms implementation: deploy, run, and lifecycle commands for AWS Lambda MicroVMs by @mashiike in https://github.com/kayac/lamvms/pull/1
