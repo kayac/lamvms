@@ -83,6 +83,10 @@ func (app *App) Shell(ctx context.Context, opt *ShellOption) error {
 		}
 	}
 
+	if err := conn.SetReadDeadline(time.Now().Add(shellPongTimeout)); err != nil {
+		closeConn()
+		return fmt.Errorf("set initial read deadline: %w", err)
+	}
 	_, initMsg, err := conn.ReadMessage()
 	if err != nil {
 		closeConn()

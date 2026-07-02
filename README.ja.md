@@ -1,5 +1,9 @@
 # lamvms
 
+[![CI](https://github.com/kayac/lamvms/actions/workflows/ci.yml/badge.svg)](https://github.com/kayac/lamvms/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/kayac/lamvms.svg)](https://pkg.go.dev/github.com/kayac/lamvms)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 lamvms は [AWS Lambda MicroVMs](https://aws.amazon.com/lambda/lambda-microvms/) のデプロイ・ライフサイクル管理ツールです。[fujiwara/lambroll](https://github.com/fujiwara/lambroll) を参考にしています。
 
 ## インストール
@@ -59,6 +63,64 @@ lamvms shell --microvm microvm.jsonnet
 ```
 
 `Ctrl+D` で切断します。
+
+## 必要な IAM 権限
+
+lamvms の動作には以下の IAM 権限が必要です:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambdamicrovms:CreateMicrovmImage",
+        "lambdamicrovms:UpdateMicrovmImage",
+        "lambdamicrovms:GetMicrovmImage",
+        "lambdamicrovms:GetMicrovmImageVersion",
+        "lambdamicrovms:UpdateMicrovmImageVersion",
+        "lambdamicrovms:DeleteMicrovmImageVersion",
+        "lambdamicrovms:ListMicrovmImages",
+        "lambdamicrovms:ListMicrovmImageVersions",
+        "lambdamicrovms:ListMicrovmImageBuilds",
+        "lambdamicrovms:RunMicrovm",
+        "lambdamicrovms:GetMicrovm",
+        "lambdamicrovms:SuspendMicrovm",
+        "lambdamicrovms:ResumeMicrovm",
+        "lambdamicrovms:TerminateMicrovm",
+        "lambdamicrovms:ListMicrovms",
+        "lambdamicrovms:DeleteMicrovmImage",
+        "lambdamicrovms:ListTags",
+        "lambdamicrovms:TagResource",
+        "lambdamicrovms:UntagResource",
+        "lambdamicrovms:CreateMicrovmAuthToken",
+        "lambdamicrovms:CreateMicrovmShellAuthToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::YOUR_BUCKET/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/YOUR_EXECUTION_ROLE"
+    }
+  ]
+}
+```
+
+- `s3:PutObject` は `deploy` がソースアーカイブをアップロードするために必要です。
+- `sts:GetCallerIdentity` は `caller_identity()` テンプレート関数が使用します。
+- `iam:PassRole` は `run` に `--execution-role-arn` を渡す場合のみ必要です。AWS Lambda MicroVMs のサービスプリンシパルが確認でき次第、`iam:PassedToService` 条件で絞り込むことを推奨します。
 
 ## 設定ファイル
 
@@ -166,6 +228,18 @@ lamvms rollback [フラグ]
 | フラグ | 説明 | デフォルト |
 |--------|------|-----------|
 | `--dry-run` | 実行内容を表示するのみ | `false` |
+
+### diff
+
+ローカルの microvm 定義とデプロイ済み設定の差分を表示します。
+
+```bash
+lamvms diff [フラグ]
+```
+
+| フラグ | 説明 | デフォルト |
+|--------|------|-----------|
+| `--exit-code` | 差分がある場合、終了コード 2 で終了 | `false` |
 
 ### run
 

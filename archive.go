@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// IgnoreFilename is the name of the file listing exclusion patterns for zip archive creation.
 const IgnoreFilename = ".microvmignore"
 
 var defaultExcludes = []string{
