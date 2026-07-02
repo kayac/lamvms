@@ -169,7 +169,7 @@ The following patterns are excluded by default, in addition to any listed in `.m
 - `microvm.jsonnet`
 - `.git/*`
 
-Symbolic links are followed (dereferenced) by default, same as the standard `zip` command. Pass `--symlink` to `deploy` to store them as symlinks in the archive instead (same as `zip --symlink`/`-y`).
+Symbolic links are followed (dereferenced) by default, same as the standard `zip` command. Pass `--symlink` to `deploy` to store them as symlinks in the archive instead (same as `zip --symlink`/`-y`). When following (the default), a symlink pointing to a directory is skipped with a warning rather than being expanded.
 
 ## Template Functions
 

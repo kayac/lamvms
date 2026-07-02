@@ -96,6 +96,56 @@ func TestCreateZipArchive_SymlinkFollowedByDefault(t *testing.T) {
 	}
 }
 
+func TestCreateZipArchive_AbsoluteSymlinkFollowedByDefault(t *testing.T) {
+	t.Parallel()
+	outsideDir := t.TempDir()
+	targetPath := filepath.Join(outsideDir, "target.txt")
+	os.WriteFile(targetPath, []byte("outside content"), 0644)
+
+	dir := t.TempDir()
+	if err := os.Symlink(targetPath, filepath.Join(dir, "link.txt")); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := createZipArchive(dir, defaultExcludes, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+	}()
+
+	r, err := zip.OpenReader(f.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	var found bool
+	for _, entry := range r.File {
+		if entry.Name != "link.txt" {
+			continue
+		}
+		found = true
+		rc, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rc.Close()
+		content, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(content); got != "outside content" {
+			t.Errorf("link.txt entry content = %q, want %q", got, "outside content")
+		}
+	}
+	if !found {
+		t.Fatal("link.txt not found in archive (absolute symlink target should still be resolved)")
+	}
+}
+
 func TestCreateZipArchive_SymlinkKeptWithOption(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

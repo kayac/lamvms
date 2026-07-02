@@ -137,7 +137,10 @@ func followSymlink(path string) (string, fs.FileInfo, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read symlink %s: %w", path, err)
 	}
-	target := filepath.Join(filepath.Dir(path), link)
+	target := link
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
 	info, err := os.Stat(target)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to stat symlink target %s: %w", target, err)
