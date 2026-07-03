@@ -229,7 +229,7 @@ lamvms wait [フラグ]
 
 | フラグ | 説明 | デフォルト |
 |--------|------|-----------|
-| `--version` | 待機する特定バージョン | 最新バージョン |
+| `--image-version` | 待機する特定バージョン | 最新バージョン |
 | `--keep-versions N` | 待機後に古いバージョンを削除 | `0`（無効） |
 
 ### rollback
@@ -386,6 +386,7 @@ lamvms skills status
 | `--filter-command` | `LAMVMS_FILTER_COMMAND` | インタラクティブ選択用フィルターコマンド（例: `peco`、`fzf`）。値にスペースが含まれる場合は `sh -c` 経由で評価されます。 |
 | `-V key=value` | | Jsonnet 外部変数 |
 | `--ext-code key=code` | | Jsonnet 外部コード |
+| `--version` / `-v` | | バージョンを表示して終了 |
 
 ## サンプル
 

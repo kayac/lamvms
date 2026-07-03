@@ -29,6 +29,8 @@ type Option struct {
 	Envfile       []string          `help:"Environment files." env:"LAMVMS_ENVFILE" json:"envfile,omitempty"`
 	ExtStr        map[string]string `help:"Jsonnet external variables." short:"V" json:"ext_str,omitempty"`
 	ExtCode       map[string]string `help:"Jsonnet external code." name:"ext-code" json:"ext_code,omitempty"`
+
+	Version kong.VersionFlag `help:"Show version." short:"v" json:"-"`
 }
 
 // CLIOptions combines global options with subcommand definitions.
@@ -49,8 +51,6 @@ type CLIOptions struct {
 	Delete    *DeleteOption       `cmd:"delete" help:"Delete a MicroVM image." json:"delete,omitempty"`
 	Logs      *LogsOption         `cmd:"logs" help:"Show CloudWatch logs of a MicroVM image." json:"logs,omitempty"`
 	Skills    *skillscmd.Commands `cmd:"skills" help:"Manage agent skills." json:"-"`
-
-	Version struct{} `cmd:"version" help:"Show version." json:"-"`
 }
 
 // InitOption represents options for the init subcommand.
@@ -83,7 +83,7 @@ type DeployOption struct {
 
 // WaitOption represents options for the wait subcommand.
 type WaitOption struct {
-	Version      string `help:"Image version to wait for. Defaults to the latest version." json:"version,omitempty"`
+	Version      string `help:"Image version to wait for. Defaults to the latest version." name:"image-version" json:"image_version,omitempty"`
 	KeepVersions int    `help:"Number of latest versions to keep. Older versions will be deleted." default:"0" json:"keep_versions,omitempty"`
 }
 
@@ -149,7 +149,7 @@ func ParseCLI(args []string) (string, *CLIOptions, func(), error) {
 	}
 
 	var opts CLIOptions
-	parser, err := kong.New(&opts, kong.Vars{"version": Version})
+	parser, err := kong.New(&opts, kong.Vars{"version": "lamvms " + Version})
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to create CLI parser: %w", err)
 	}
@@ -227,12 +227,6 @@ func CLI(ctx context.Context, parse CLIParseFunc) (int, error) {
 }
 
 func dispatchCLI(ctx context.Context, sub string, usage func(), opts *CLIOptions) (int, error) {
-	switch sub {
-	case "version", "":
-		fmt.Println("lamvms", Version)
-		return 0, nil
-	}
-
 	if sub == "init" {
 		slog.Info("lamvms", "version", Version)
 		return initCmd(ctx, &opts.Option, opts.Init)

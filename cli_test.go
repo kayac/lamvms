@@ -38,17 +38,6 @@ func TestParseCLI_DeployDryRun(t *testing.T) {
 	}
 }
 
-func TestParseCLI_Version(t *testing.T) {
-	t.Parallel()
-	sub, _, _, err := ParseCLI([]string{"version"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sub != "version" {
-		t.Errorf("sub = %q, want %q", sub, "version")
-	}
-}
-
 func TestParseCLI_ExtStr(t *testing.T) {
 	t.Parallel()
 	sub, opts, _, err := ParseCLI([]string{"deploy", "-V", "key=value", "-V", "foo=bar"})
