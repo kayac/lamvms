@@ -229,7 +229,7 @@ lamvms wait [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--version` | Specific version to wait for | Latest version |
+| `--image-version` | Specific version to wait for | Latest version |
 | `--keep-versions N` | Delete old versions after wait | `0` (disabled) |
 
 ### rollback
@@ -386,6 +386,7 @@ lamvms skills status
 | `--filter-command` | `LAMVMS_FILTER_COMMAND` | Filter command for interactive selection (e.g. `peco`, `fzf`). If the value contains spaces, it is evaluated via `sh -c`. |
 | `-V key=value` | | Jsonnet external variables |
 | `--ext-code key=code` | | Jsonnet external code |
+| `--version` / `-v` | | Show version and exit |
 
 ## Examples
 
