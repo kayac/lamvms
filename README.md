@@ -18,6 +18,15 @@ Download the latest binary from [GitHub Releases](https://github.com/kayac/lamvm
 go install github.com/kayac/lamvms/cmd/lamvms@latest
 ```
 
+### aqua
+
+[aqua](https://aquaproj.github.io/) is a declarative CLI Version Manager. See [the installation guide](https://aquaproj.github.io/docs/reference/install) to install aqua itself. Once aqua is installed, you can install lamvms with:
+
+```bash
+aqua g -i kayac/lamvms
+aqua i
+```
+
 ## Quick Start
 
 ### 1. Create a microvm definition

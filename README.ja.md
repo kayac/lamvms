@@ -18,6 +18,15 @@ lamvms は [AWS Lambda MicroVMs](https://aws.amazon.com/lambda/lambda-microvms/)
 go install github.com/kayac/lamvms/cmd/lamvms@latest
 ```
 
+### aqua
+
+[aqua](https://aquaproj.github.io/) は宣言的な CLI バージョンマネージャーです。aqua 自体のインストール方法は[インストールガイド](https://aquaproj.github.io/docs/reference/install)を参照してください。aqua インストール後は、以下のコマンドで lamvms をインストールできます。
+
+```bash
+aqua g -i kayac/lamvms
+aqua i
+```
+
 ## クイックスタート
 
 ### 1. MicroVM 定義ファイルを作成
