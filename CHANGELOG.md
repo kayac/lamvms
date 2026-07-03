@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.2.0](https://github.com/kayac/lamvms/compare/v0.1.0...v0.2.0) - 2026-07-03
+
+- Replace version subcommand with --version/-v global flag by @mashiike in https://github.com/kayac/lamvms/pull/22
+- docs: add aqua installation guide by @mashiike in https://github.com/kayac/lamvms/pull/24
+- chore(deps): Bump github.com/aws/aws-sdk-go-v2/config from 1.32.26 to 1.32.27 in the aws-sdk-go group across 1 directory by @dependabot[bot] in https://github.com/kayac/lamvms/pull/21
+
 ## [v0.1.0](https://github.com/kayac/lamvms/compare/v0.0.1...v0.1.0) - 2026-07-02
 
 - Add PR title/description language guideline to CLAUDE.md by @mashiike in https://github.com/kayac/lamvms/pull/15
