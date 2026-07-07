@@ -215,7 +215,7 @@ func (app *App) waitForVersion(ctx context.Context, imageARN, imageVersion strin
 			return fmt.Errorf("get microvm image version: %w", err)
 		}
 
-		slog.Debug("version state", "image", imageARN, "version", imageVersion, "state", out.State)
+		slog.Info("waiting for version", "image", imageARN, "version", imageVersion, "state", out.State)
 
 		switch out.State {
 		case types.MicrovmImageVersionStateSuccessful:
