@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.3.0](https://github.com/kayac/lamvms/compare/v0.2.0...v0.3.0) - 2026-07-07
+
+- fix(deploy): log wait progress at info level by @mashiike in https://github.com/kayac/lamvms/pull/25
+
 ## [v0.2.0](https://github.com/kayac/lamvms/compare/v0.1.0...v0.2.0) - 2026-07-03
 
 - Replace version subcommand with --version/-v global flag by @mashiike in https://github.com/kayac/lamvms/pull/22
