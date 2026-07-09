@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -64,7 +65,7 @@ func (app *App) Deploy(ctx context.Context, opt *DeployOption) error {
 		return nil
 	}
 
-	if err := app.waitForVersion(ctx, imageARN, imageVersion); err != nil {
+	if err := app.waitForVersion(ctx, imageARN, imageVersion, opt.BuildLogs); err != nil {
 		return err
 	}
 
@@ -198,8 +199,14 @@ func (app *App) updateMicrovmImage(ctx context.Context, existing *lambdamicrovms
 	return aws.ToString(out.ImageArn), aws.ToString(out.ImageVersion), nil
 }
 
-func (app *App) waitForVersion(ctx context.Context, imageARN, imageVersion string) error {
+func (app *App) waitForVersion(ctx context.Context, imageARN, imageVersion string, showBuildLogs bool) error {
 	slog.Info("waiting for version to be ready", "image", imageARN, "version", imageVersion)
+
+	if showBuildLogs {
+		stop := app.startBuildLogTail(ctx, imageVersion)
+		defer stop()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -265,5 +272,38 @@ func (app *App) getFailureReason(ctx context.Context, imageARN, imageVersion str
 	if len(reasons) > 0 {
 		return strings.Join(reasons, "; ")
 	}
-	return "(no reason found, check CloudWatch logs: /aws/lambda-microvms/)"
+	name := aws.ToString(app.microvmImage.Name)
+	return fmt.Sprintf("(no reason found, check CloudWatch logs: %s)", microvmLogGroupName(name))
+}
+
+func (app *App) startBuildLogTail(ctx context.Context, imageVersion string) (stop func()) {
+	name := aws.ToString(app.microvmImage.Name)
+	logGroup := microvmLogGroupName(name)
+	command := []string{"aws"}
+	if app.profile != "" {
+		command = append(command, "--profile", app.profile)
+	}
+	if app.awsConfig.Region != "" {
+		command = append(command, "--region", app.awsConfig.Region)
+	}
+	command = append(command, "logs", "tail", logGroup, "--follow", "--log-stream-name-prefix", imageVersion+"/")
+
+	tailCtx, cancel := context.WithCancel(ctx)
+	cmd := exec.CommandContext(tailCtx, command[0], command[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		cancel()
+		slog.Warn("failed to start build log tail, continuing without it", "error", err)
+		return func() {}
+	}
+	slog.Debug("invoking command", "command", strings.Join(command, " "))
+
+	return func() {
+		cancel()
+		if err := cmd.Wait(); err != nil {
+			slog.Debug("build log tail process exited", "error", err)
+		}
+	}
 }

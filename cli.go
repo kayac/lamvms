@@ -76,6 +76,7 @@ type DeployOption struct {
 	Src          string `help:"Source directory to archive and upload. Defaults to the directory of the microvm definition file." json:"src,omitempty"`
 	SkipArchive  bool   `help:"Skip creating and uploading zip archive." default:"false" json:"skip_archive,omitempty"`
 	Wait         bool   `help:"Wait for the image build to complete." default:"true" negatable:"" json:"wait,omitempty"`
+	BuildLogs    bool   `help:"Tail the build's CloudWatch Logs while waiting." default:"true" negatable:"" json:"build_logs,omitempty"`
 	KeepVersions int    `help:"Number of latest versions to keep. Older versions will be deleted." default:"0" json:"keep_versions,omitempty"`
 	DryRun       bool   `help:"Dry run." default:"false" json:"dry_run,omitempty"`
 	Symlink      bool   `help:"Keep symlinks in the archive instead of following them (same as zip --symlink,-y)." default:"false" json:"symlink,omitempty"`
@@ -84,6 +85,7 @@ type DeployOption struct {
 // WaitOption represents options for the wait subcommand.
 type WaitOption struct {
 	Version      string `help:"Image version to wait for. Defaults to the latest version." name:"image-version" json:"image_version,omitempty"`
+	BuildLogs    bool   `help:"Tail the build's CloudWatch Logs while waiting." default:"true" negatable:"" json:"build_logs,omitempty"`
 	KeepVersions int    `help:"Number of latest versions to keep. Older versions will be deleted." default:"0" json:"keep_versions,omitempty"`
 }
 

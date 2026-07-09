@@ -2,6 +2,10 @@ package lamvms
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -289,5 +293,107 @@ func TestDeploy_DryRun(t *testing.T) {
 	app := newTestApp(t, mock, "testdata/microvm.json")
 	if err := app.Deploy(context.Background(), &DeployOption{SkipArchive: true, Wait: true, DryRun: true}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDeploy_Create_BuildLogsBestEffortWhenAWSCLIMissing(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
+	ctrl := gomock.NewController(t)
+	mock := NewMockLambdaMicroVMsClient(ctrl)
+
+	expectListNotFound(mock)
+
+	mock.EXPECT().
+		CreateMicrovmImage(gomock.Any(), gomock.Any()).
+		Return(&lambdamicrovms.CreateMicrovmImageOutput{
+			Name:         aws.String("test-microvm"),
+			ImageArn:     aws.String(testImageARN),
+			ImageVersion: aws.String("1.0"),
+			State:        types.MicrovmImageStateCreating,
+		}, nil)
+
+	expectVersionSuccessful(mock, "1.0")
+
+	app := newTestApp(t, mock, "testdata/microvm.json")
+	if err := app.Deploy(context.Background(), &DeployOption{SkipArchive: true, Wait: true, BuildLogs: true}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func newFakeAWS(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	name := "aws"
+	if runtime.GOOS == "windows" {
+		name = "aws.bat"
+	}
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$FAKE_AWS_ARGS_FILE\"\nsleep 5\n"
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return filepath.Join(t.TempDir(), "args.txt")
+}
+
+func TestStartBuildLogTail_NotFound(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
+	app := newTestApp(t, nil, "testdata/microvm.json")
+	stop := app.startBuildLogTail(context.Background(), "1.0")
+	stop()
+}
+
+func TestStartBuildLogTail_BuildsCommand(t *testing.T) {
+	argsFile := newFakeAWS(t)
+	t.Setenv("FAKE_AWS_ARGS_FILE", argsFile)
+
+	app := newTestApp(t, nil, "testdata/microvm.json")
+	app.profile = "test-profile"
+	app.awsConfig.Region = "ap-northeast-1"
+
+	stop := app.startBuildLogTail(context.Background(), "1.0")
+	defer stop()
+
+	deadline := time.Now().Add(3 * time.Second)
+	var got []byte
+	for {
+		var err error
+		got, err = os.ReadFile(argsFile)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("args file was not written in time: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	gotArgs := strings.Split(strings.TrimRight(string(got), "\n"), "\n")
+	want := []string{
+		"--profile", "test-profile",
+		"--region", "ap-northeast-1",
+		"logs", "tail", "/aws/lambda-microvms/test-microvm",
+		"--follow", "--log-stream-name-prefix", "1.0/",
+	}
+	if strings.Join(gotArgs, " ") != strings.Join(want, " ") {
+		t.Errorf("aws args = %v, want %v", gotArgs, want)
+	}
+}
+
+func TestStartBuildLogTail_StopDoesNotHang(t *testing.T) {
+	newFakeAWS(t)
+
+	app := newTestApp(t, nil, "testdata/microvm.json")
+	stop := app.startBuildLogTail(context.Background(), "1.0")
+
+	done := make(chan struct{})
+	go func() {
+		stop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stop() did not return in time")
 	}
 }
