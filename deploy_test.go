@@ -323,13 +323,12 @@ func TestDeploy_Create_BuildLogsBestEffortWhenAWSCLIMissing(t *testing.T) {
 
 func newFakeAWS(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	name := "aws"
 	if runtime.GOOS == "windows" {
-		name = "aws.bat"
+		t.Skip("fake aws helper is a POSIX shell script")
 	}
+	dir := t.TempDir()
 	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$FAKE_AWS_ARGS_FILE\"\nsleep 5\n"
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "aws"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
