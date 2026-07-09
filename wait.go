@@ -28,7 +28,7 @@ func (app *App) Wait(ctx context.Context, opt *WaitOption) error {
 
 	if opt.Version != "" {
 		slog.Info("waiting for version", "name", name, "version", opt.Version)
-		if err := app.waitForVersion(ctx, imageARN, opt.Version); err != nil {
+		if err := app.waitForVersion(ctx, imageARN, opt.Version, opt.BuildLogs); err != nil {
 			return err
 		}
 	} else {
@@ -43,7 +43,7 @@ func (app *App) Wait(ctx context.Context, opt *WaitOption) error {
 				return err
 			}
 			slog.Info("waiting for version", "name", name, "version", version)
-			if err := app.waitForVersion(ctx, imageARN, version); err != nil {
+			if err := app.waitForVersion(ctx, imageARN, version, opt.BuildLogs); err != nil {
 				return err
 			}
 		}

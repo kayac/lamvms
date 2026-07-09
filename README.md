@@ -224,6 +224,7 @@ lamvms deploy [flags]
 | `--src` | Source directory for zip archive | Directory of microvm definition |
 | `--skip-archive` | Skip zip creation and S3 upload | `false` |
 | `--wait` / `--no-wait` | Wait for build completion | `true` |
+| `--build-logs` / `--no-build-logs` | Tail the build's CloudWatch Logs while waiting | `true` |
 | `--keep-versions N` | Keep N latest active versions, delete older | `0` (disabled) |
 | `--dry-run` | Show what would be done | `false` |
 | `--symlink` | Keep symlinks in the archive instead of following them (same as `zip --symlink`) | `false` |
@@ -239,6 +240,7 @@ lamvms wait [flags]
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--image-version` | Specific version to wait for | Latest version |
+| `--build-logs` / `--no-build-logs` | Tail the build's CloudWatch Logs while waiting | `true` |
 | `--keep-versions N` | Delete old versions after wait | `0` (disabled) |
 
 ### rollback

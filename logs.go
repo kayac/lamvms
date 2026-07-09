@@ -20,11 +20,15 @@ type LogsOption struct {
 	FilterPattern string `help:"The filter pattern to use." json:"filter_pattern,omitempty"`
 }
 
+func microvmLogGroupName(name string) string {
+	return fmt.Sprintf("/aws/lambda-microvms/%s", name)
+}
+
 // Logs tails CloudWatch logs for the MicroVM image.
 func (app *App) Logs(ctx context.Context, opt *LogsOption) error {
 	img := app.microvmImage
 	name := aws.ToString(img.Name)
-	logGroup := fmt.Sprintf("/aws/lambda-microvms/%s", name)
+	logGroup := microvmLogGroupName(name)
 
 	command := []string{"aws"}
 	if app.profile != "" {

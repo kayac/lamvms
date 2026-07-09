@@ -224,6 +224,7 @@ lamvms deploy [フラグ]
 | `--src` | zip アーカイブのソースディレクトリ | microvm 定義のディレクトリ |
 | `--skip-archive` | zip 作成・S3 アップロードをスキップ | `false` |
 | `--wait` / `--no-wait` | ビルド完了を待機 | `true` |
+| `--build-logs` / `--no-build-logs` | 待機中にビルドの CloudWatch Logs を tail する | `true` |
 | `--keep-versions N` | 最新 N 件のアクティブバージョンを保持 | `0`（無効） |
 | `--dry-run` | 実行内容を表示するのみ | `false` |
 | `--symlink` | 実体展開せずシンボリックリンクとしてアーカイブに格納する（`zip --symlink` と同等） | `false` |
@@ -239,6 +240,7 @@ lamvms wait [フラグ]
 | フラグ | 説明 | デフォルト |
 |--------|------|-----------|
 | `--image-version` | 待機する特定バージョン | 最新バージョン |
+| `--build-logs` / `--no-build-logs` | 待機中にビルドの CloudWatch Logs を tail する | `true` |
 | `--keep-versions N` | 待機後に古いバージョンを削除 | `0`（無効） |
 
 ### rollback
