@@ -46,7 +46,7 @@ AWS SDK の union 型（`CodeArtifact`, `Logging` 等）は標準の `json.Unmar
 - `--run-def` 未指定時は microvm 定義ファイルのディレクトリ → cwd の順で `run.jsonnet` / `run.json` を自動探索
 - `--run-def` が見つからない場合は `ImageIdentifier` のみで MicroVM を起動する（最小構成）
 - `run` コマンドの CLI フラグ（`--image-version`, `--execution-role-arn` 等）は `run.jsonnet` の値を上書きする
-- `keep-versions` は ACTIVE かつ SUCCESSFUL な version を N 件数え、それより古い version を全て削除する
+- `keep-versions` は ACTIVE かつ SUCCESSFUL な version を N 件数え、それより古い version を古い順に削除する（best-effort）。`DeleteMicrovmImageVersion` が `ConflictException`（image が busy）を返したら、そこで残りの削除を諦めて警告ログを出し、次回の `keep-versions` 実行に委ねる。`DeleteMicrovmImageVersion` が image 全体を非同期に `UPDATING` へ遷移させるため、完了を待つとその遷移が数日単位で解消しないケースがあり、待機はしない
 - `keep-versions` はデプロイ成功後のみ実行される（`--no-wait` では実行しない）
 - rollback = 最新の ACTIVE+SUCCESSFUL version を `UpdateMicrovmImageVersion` で INACTIVE にする
 - `omitEmptyValues` で JSON 出力から null/空フィールドを除去する（lambroll の `json.go` がベース）

@@ -2,6 +2,7 @@ package lamvms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -40,6 +41,7 @@ func (app *App) deleteOldVersions(ctx context.Context, imageARN string, keep int
 		return nil
 	}
 
+	deleted := 0
 	for _, v := range toDelete {
 		version := aws.ToString(v.ImageVersion)
 		slog.Info("deleting old version", "version", version, "status", v.Status, "state", v.State)
@@ -48,10 +50,15 @@ func (app *App) deleteOldVersions(ctx context.Context, imageARN string, keep int
 			ImageVersion:    aws.String(version),
 		})
 		if err != nil {
+			if _, ok := errors.AsType[*types.ConflictException](err); ok {
+				slog.Warn("image is busy, skipping remaining version deletions", "version", version, "remaining", len(toDelete)-deleted, "error", err)
+				break
+			}
 			return fmt.Errorf("failed to delete version %s: %w", version, err)
 		}
+		deleted++
 	}
 
-	slog.Info("deleted old versions", "count", len(toDelete), "kept", keep)
+	slog.Info("deleted old versions", "count", deleted, "kept", keep)
 	return nil
 }
