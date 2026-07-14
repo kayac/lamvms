@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/kylelemons/godebug v1.1.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/term v0.44.0
+	golang.org/x/term v0.45.0
 	golang.org/x/tools v0.47.0
 )
 
@@ -42,6 +42,6 @@ require (
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
