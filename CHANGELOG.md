@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.3.1](https://github.com/kayac/lamvms/compare/v0.3.0...v0.3.1) - 2026-07-14
+
+- fix(deploy): don't block keep-versions cleanup on image UPDATING state by @mashiike in https://github.com/kayac/lamvms/pull/29
+- feat(deploy): tail build logs from CloudWatch while waiting by @mashiike in https://github.com/kayac/lamvms/pull/31
+- chore(deps): Bump the aws-sdk-go group across 1 directory with 4 updates by @dependabot[bot] in https://github.com/kayac/lamvms/pull/27
+- chore(deps): Bump golang.org/x/term from 0.44.0 to 0.45.0 by @dependabot[bot] in https://github.com/kayac/lamvms/pull/28
+
 ## [v0.3.0](https://github.com/kayac/lamvms/compare/v0.2.0...v0.3.0) - 2026-07-07
 
 - fix(deploy): log wait progress at info level by @mashiike in https://github.com/kayac/lamvms/pull/25
