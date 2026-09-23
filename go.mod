@@ -3,7 +3,7 @@ module github.com/kayac/lamvms
 go 1.26.0
 
 require (
-	github.com/Songmu/skillsmith v0.1.0
+	github.com/Songmu/skillsmith v0.2.0
 	github.com/alecthomas/kong v1.15.0
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
@@ -40,7 +40,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
