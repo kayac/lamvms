@@ -24,7 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      - uses: Songmu/tagpr@e84001bd5dac8defa0c75b3913937d284a3b3660 # v1
+      - uses: Songmu/tagpr@2afc990a4a5a9a340665cc1a484c2102f7de332f # v1
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
